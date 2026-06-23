@@ -29,3 +29,4 @@ You have complete control over your data. You can request total deletion of your
 ### 5. Contact Information
 If you have any questions, concerns, or data deletion requests regarding SheepyBot, please contact the developer via:
 * **Discord Server:** https://discord.gg/JZC8rgUHMf
+* **DM:** cresclent
