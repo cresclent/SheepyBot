@@ -1823,6 +1823,11 @@ host.AddSlashCommand("listignored", "List all ignored users (Admin only, specifi
     return response;
 });
 
+host.AddSlashCommand("github", "The open source code!", async(ApplicationCommandContext context) => {
+    logger.Logger(context, "github");
+    return "<:GITHUB:1518897243003031652>  [github](https://github.com/cresclent/SheepyBot)";
+});
+
 void AddToInventory(UserWishData data, string item)
 {
     if (data.Inventory.ContainsKey(item))
@@ -1953,7 +1958,8 @@ client.Ready += async (ReadyEventArgs args) =>
                     }
                 }
             },
-            new SlashCommandProperties("listignored", "List all ignored users (Admin only, specific channel)")
+            new SlashCommandProperties("listignored", "List all ignored users (Admin only, specific channel)"),
+            new SlashCommandProperties("github", "The open source code!")
         };
 
         await restClient.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
