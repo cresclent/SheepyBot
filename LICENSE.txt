@@ -1,12 +1,14 @@
 Copyright (c) 2026 Cresclent
 
-Permission is hereby granted to view the source code of this software 
+Permission is hereby granted to view the source code of this Discord bot 
 solely for educational, evaluation, and review purposes.
 
 You are strictly prohibited from:
-1. Copying, modifying, altering, or creating derivative works of this software.
-2. Running, executing, or using this software for any commercial or non-commercial purpose.
-3. Selling, renting, leasing, sublicensing, or distributing this software.
+1. Copying, modifying, altering, or creating derivative works of this bot's code.
+2. Hosting, running, or executing this bot on any local machine, private server, 
+   or cloud hosting platform (e.g., Heroku, AWS, Railway, VPS).
+3. Inviting or deploying copies of this bot to any Discord guild/server.
+4. Selling, renting, leasing, sublicensing, or distributing this software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
