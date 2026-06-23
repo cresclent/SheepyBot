@@ -1,4 +1,6 @@
-﻿using NetCord.Services.ApplicationCommands;
+﻿// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using NetCord.Services.ApplicationCommands;
 using System;
 using System.Collections.Generic;
 using System.IO;
