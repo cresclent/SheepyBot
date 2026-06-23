@@ -1828,7 +1828,7 @@ host.AddSlashCommand("listignored", "List all ignored users (Admin only, specifi
 
 host.AddSlashCommand("github", "The open source code!", async(ApplicationCommandContext context) => {
     logger.Logger(context, "github");
-    return "<:GITHUB:1518897243003031652>  [github](https://github.com/cresclent/SheepyBot)";
+    return "<:GITHUB:1518904145107746928>  [github](https://github.com/cresclent/SheepyBot)";
 });
 
 void AddToInventory(UserWishData data, string item)
@@ -1969,7 +1969,12 @@ client.Ready += async (ReadyEventArgs args) =>
         Console.WriteLine($"{commands.Count} commands registered!");
         Console.WriteLine("User data saved to: userdata/[userId].json");
         Console.WriteLine("Suggestions saved to: suggestions/suggestion-[id].json");
-        Console.WriteLine("Commands: /pity, /inventory, /banner, /pull, /help, /coinflip, /bannerreset, /guilddata, /alldata, /guildleaderboard, /totalleaderboard, /suggest, /approvesuggestion, /denysuggestion, /viewsuggestion, /listsuggestions, /setstartupchannel, /disablestartup, /startupstatus, /allstartupchannels, /ignoreuser, /unignoreuser, /listignored");
+        string commandsstring = "";
+        foreach (var command in commands)
+        {
+            commandsstring += $"/{command.Name}, ";
+        }
+        Console.WriteLine($"Commands: {commandsstring.TrimEnd(", ")}");
 
         var startupAnnouncement = new StartupAnnouncement(restClient);
         await startupAnnouncement.SendStartupAnnouncementAsync();
