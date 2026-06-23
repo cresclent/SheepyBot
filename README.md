@@ -1,9 +1,7 @@
 # SheepyBot
 Welcome! this is my SheepyBot!
 
-the bot is inviteable through my **discord server**
-
-by clicking the bot and hitting add app button.
+the bot is inviteable through the **Discover Page**
 
 **SERVER WILL BE REFERRED TO AT THE BOTTOM**
 
