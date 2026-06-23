@@ -1828,7 +1828,7 @@ host.AddSlashCommand("listignored", "List all ignored users (Admin only, specifi
 
 host.AddSlashCommand("github", "The open source code!", async(ApplicationCommandContext context) => {
     logger.Logger(context, "github");
-    return "<:GITHUB:1518904145107746928>  [github](https://github.com/cresclent/SheepyBot)";
+    return "github: [github](https://github.com/cresclent/SheepyBot)";
 });
 
 void AddToInventory(UserWishData data, string item)
