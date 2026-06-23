@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
 using discord_bot.Helpers;
+using discord_bot.Services;
 using discord_bot.userdataModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1831,6 +1832,18 @@ host.AddSlashCommand("github", "The open source code!", async(ApplicationCommand
     return "github: [github](https://github.com/cresclent/SheepyBot)";
 });
 
+host.AddSlashCommand("terms", "the terms of service", async (ApplicationCommandContext context) =>
+{
+    logger.Logger(context, "terms");
+    return new TAPCommands().TOS();
+});
+
+host.AddSlashCommand("privacy", "the privacy policy", async (ApplicationCommandContext context) =>
+{
+    logger.Logger(context, "privacy");
+    return new TAPCommands().Privacy();
+});
+
 void AddToInventory(UserWishData data, string item)
 {
     if (data.Inventory.ContainsKey(item))
@@ -1962,7 +1975,9 @@ client.Ready += async (ReadyEventArgs args) =>
                 }
             },
             new SlashCommandProperties("listignored", "List all ignored users (Admin only, specific channel)"),
-            new SlashCommandProperties("github", "The open source code!")
+            new SlashCommandProperties("github", "The open source code!"),
+            new SlashCommandProperties("terms", "the terms of service"),
+            new SlashCommandProperties("privacy", "the privacy policy")
         };
 
         await restClient.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);

@@ -52,7 +52,6 @@ namespace discord_bot.userdataModels
             {
                 try
                 {
-                    // Use the same directory as appsettings.json
                     _ignoreFilePath = Path.Combine(AppContext.BaseDirectory, "IgnoredUserIds.json");
 
                     if (File.Exists(_ignoreFilePath))
@@ -66,7 +65,6 @@ namespace discord_bot.userdataModels
                     }
                     else
                     {
-                        // Create empty file if it doesn't exist
                         SaveIgnoredUsers();
                     }
                 }
