@@ -335,6 +335,7 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"`/unignoreuser <user>` - Remove a user from the ignore list (Admin only, specific channel)\n" +
            $"`/listignored` - List all ignored users (Admin only, specific channel)\n\n" +
            $"## ℹ️ **Info**\n" +
+           $"`/github` simple github command with link to repo\n" +
            $"Ask Cresclent for more info (can be DMs, may take a while to answer)\n" +
            $"If you want your data removed from this bot, send me a DM immediately. I will add you to an ignore list.";
 
