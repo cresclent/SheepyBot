@@ -7,7 +7,7 @@ namespace discord_bot.Services
 {
     internal class TAPCommands
     {
-        private string filepath = Path.Combine(AppContext.BaseDirectory, "Terms");
+        private string filepath = Path.Combine(AppContext.BaseDirectory, "../../../Terms");
         public string TOS()
         {
             if (File.Exists(Path.Combine(filepath, "TERMS.md"))){
@@ -16,7 +16,7 @@ namespace discord_bot.Services
             }
             else
             {
-                return "Terms doesn't exist (this shouldnt happen... send DM immediately)";
+                return $"Terms doesn't exist (this shouldnt happen... send DM immediately)\nFilepath: {Path.Combine(filepath, "TERMS.md")}";
             }
         }
 
@@ -29,7 +29,7 @@ namespace discord_bot.Services
             }
             else
             {
-                return "Privacy doesn't exist (this shouldnt happen... send DM immediately)";
+                return $"Privacy Policy doesn't exist (this shouldnt happen... send DM immediately)\nFilepath: {Path.Combine(filepath, "PRIVACY.md")}";
             }
         }
     }
