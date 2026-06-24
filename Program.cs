@@ -2,6 +2,7 @@
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
 using discord_bot.Helpers;
 using discord_bot.Services;
+using discord_bot.SmallDat;
 using discord_bot.userdataModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -935,11 +936,11 @@ host.AddSlashCommand("guildleaderboard", "Show top command users in this guild (
         conciseResponse += $"👥 {userStats.Count} users | 📝 {userStats.Sum(u => u.TotalCommands)} commands\n\n";
         conciseResponse += $"**Top 10 Users:**\n";
 
-        rank = 1;
+        int conciseRank = 1;
         foreach (var user in userStats.Take(10))
         {
-            conciseResponse += $"{rank}. {user.UserName} - {user.TotalCommands}\n";
-            rank++;
+            conciseResponse += $"{conciseRank}. {user.UserName} - {user.TotalCommands}\n";
+            conciseRank++;
         }
 
         return conciseResponse;
@@ -1074,19 +1075,19 @@ host.AddSlashCommand("totalleaderboard", "Show top command users across ALL guil
         conciseResponse += $"📅 {startDate:MMMM yyyy} | 👥 {userStats.Count} users | 📝 {userStats.Sum(u => u.TotalCommands)} commands\n\n";
         conciseResponse += $"**Top 10 Users:**\n";
 
-        rank = 1;
+        int conciseRank = 1;
         foreach (var user in userStats.Take(10))
         {
-            conciseResponse += $"{rank}. {user.UserName} - {user.TotalCommands}\n";
-            rank++;
+            conciseResponse += $"{conciseRank}. {user.UserName} - {user.TotalCommands}\n";
+            conciseRank++;
         }
 
         conciseResponse += $"\n**Top 5 Guilds:**\n";
-        rank = 1;
+        conciseRank = 1;
         foreach (var guild in guildStats.Take(5))
         {
-            conciseResponse += $"{rank}. {guild.GuildName} - {guild.TotalCommands}\n";
-            rank++;
+            conciseResponse += $"{conciseRank}. {guild.GuildName} - {guild.TotalCommands}\n";
+            conciseRank++;
         }
 
         return conciseResponse;
@@ -1240,11 +1241,11 @@ host.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin o
         truncatedResponse += $"📝 Total Commands: {guildLogs.Sum(u => u.Guilds[guildId.ToString()].TotalCommands)}\n";
         truncatedResponse += $"\n**Top Users:**\n";
 
-        rank = 1;
+        int truncatedRank = 1;
         foreach (var user in topUsers)
         {
-            truncatedResponse += $"{rank}. **{user.User.UserName}**: {user.CommandCount} commands\n";
-            rank++;
+            truncatedResponse += $"{truncatedRank}. **{user.User.UserName}**: {user.CommandCount} commands\n";
+            truncatedRank++;
         }
 
         truncatedResponse += $"\n**Channel Stats:** {channelStats.Count} channels\n";
@@ -1650,10 +1651,6 @@ host.AddSlashCommand("allstartupchannels", "View all configured startup announce
     return startupAnnouncement.GetAllConfigInfo();
 });
 
-// ============================================
-// IGNORE LIST COMMANDS
-// ============================================
-
 host.AddSlashCommand("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "user", Description = "The user to ignore")] User user) =>
 {
@@ -1829,18 +1826,53 @@ host.AddSlashCommand("listignored", "List all ignored users (Admin only, specifi
     return response;
 });
 
-host.AddSlashCommand("github", "The open source code!", async(ApplicationCommandContext context) => {
+host.AddSlashCommand("cleanupremovedservers", "Check and cleanup data for removed servers (Bot owner only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+
+    logger.Logger(context, "cleanupremovedservers");
+
+    if (userId != 1157243448093573120)
+    {
+        return "❌ Only the bot owner can use this command!";
+    }
+
+    try
+    {
+        var client = host.Services.GetRequiredService<GatewayClient>();
+        var serverTracker = new ServerTracker();
+        var currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
+
+        foreach (var guildId in currentGuilds)
+        {
+            serverTracker.AddServer(guildId);
+        }
+        await serverTracker.CheckAndCleanupRemovedServers(currentGuilds);
+
+        var tracked = serverTracker.GetAllServers();
+        return $"✅ Cleanup completed!\n" +
+               $"📋 Tracking {tracked.Count} servers\n" +
+               $"🌐 Currently in {currentGuilds.Count} servers";
+    }
+    catch (Exception ex)
+    {
+        return $"❌ Error: {ex.Message}";
+    }
+});
+
+host.AddSlashCommand("github", "The open source code!", (ApplicationCommandContext context) =>
+{
     logger.Logger(context, "github");
     return "github: [github](https://github.com/cresclent/SheepyBot)";
 });
 
-host.AddSlashCommand("terms", "the terms of service", async (ApplicationCommandContext context) =>
+host.AddSlashCommand("terms", "the terms of service", (ApplicationCommandContext context) =>
 {
     logger.Logger(context, "terms");
     return new TAPCommands().TOS();
 });
 
-host.AddSlashCommand("privacy", "the privacy policy", async (ApplicationCommandContext context) =>
+host.AddSlashCommand("privacy", "the privacy policy", (ApplicationCommandContext context) =>
 {
     logger.Logger(context, "privacy");
     return new TAPCommands().Privacy();
@@ -1865,10 +1897,10 @@ bool IsFourStar(string item)
     return Array.Exists(fourStarCharacters, x => x == item);
 }
 
+ulong applicationId = 1517174047169974404;
+
 var client = host.Services.GetRequiredService<GatewayClient>();
 var restClient = host.Services.GetRequiredService<RestClient>();
-
-ulong applicationId = 1517174047169974404;
 
 client.Ready += async (ReadyEventArgs args) =>
 {
@@ -1881,6 +1913,28 @@ client.Ready += async (ReadyEventArgs args) =>
         {
             Activities = new[] { new UserActivityProperties(gameStatus, UserActivityType.Playing) }
         });
+
+        var serverTracker = new ServerTracker();
+        var currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
+
+        for (int i = 0; i < 5 && currentGuilds.Count == 0; i++)
+        {
+            Console.WriteLine($"Waiting for cache to populate... (attempt {i + 1}/5)");
+            await Task.Delay(3000);
+            currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
+        }
+
+        Console.WriteLine($"Found {currentGuilds.Count} servers in cache");
+
+        foreach (var guildId in currentGuilds)
+        {
+            serverTracker.AddServer(guildId);
+        }
+
+        await serverTracker.CheckAndCleanupRemovedServers(currentGuilds);
+
+        var trackedServers = serverTracker.GetAllServers();
+        Console.WriteLine($"Tracking {trackedServers.Count} servers total");
 
         var commands = new List<ApplicationCommandProperties>
         {
@@ -1979,19 +2033,21 @@ client.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("listignored", "List all ignored users (Admin only, specific channel)"),
             new SlashCommandProperties("github", "The open source code!"),
             new SlashCommandProperties("terms", "the terms of service"),
-            new SlashCommandProperties("privacy", "the privacy policy")
+            new SlashCommandProperties("privacy", "the privacy policy"),
+            new SlashCommandProperties("cleanupremovedservers", "Check and cleanup data for removed servers (Bot owner only)")
         };
 
         await restClient.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
         Console.WriteLine($"{commands.Count} commands registered!");
         Console.WriteLine("User data saved to: userdata/[userId].json");
         Console.WriteLine("Suggestions saved to: suggestions/suggestion-[id].json");
+
         string commandsstring = "";
         foreach (var command in commands)
         {
             commandsstring += $"/{command.Name}, ";
         }
-        Console.WriteLine($"Commands: {commandsstring.TrimEnd(", ")}");
+        Console.WriteLine($"Commands: {commandsstring.TrimEnd(',', ' ')}");
 
         var startupAnnouncement = new StartupAnnouncement(restClient);
         await startupAnnouncement.SendStartupAnnouncementAsync();
