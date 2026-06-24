@@ -99,6 +99,7 @@ namespace discord_bot.SmallDat
                 string totalDataPath = Path.Combine(AppContext.BaseDirectory, "totaldata");
                 int deletedLogFiles = 0;
                 int filesProcessed = 0;
+                int usersRemoved = 0;
 
                 if (Directory.Exists(totalDataPath))
                 {
@@ -112,16 +113,25 @@ namespace discord_bot.SmallDat
                             string json = File.ReadAllText(file);
                             var dayLogs = JsonSerializer.Deserialize<List<UserDataLogger>>(json);
 
-                            if (dayLogs != null)
+                            if (dayLogs != null && dayLogs.Count > 0)
                             {
-                                var filteredLogs = dayLogs
-                                    .Where(log => !log.Guilds.ContainsKey(guildId.ToString()))
-                                    .ToList();
+                                bool fileModified = false;
+                                var guildIdStr = guildId.ToString();
 
-                                if (filteredLogs.Count != dayLogs.Count)
+                                foreach (var log in dayLogs)
+                                {
+                                    if (log.Guilds.ContainsKey(guildIdStr))
+                                    {
+                                        log.Guilds.Remove(guildIdStr);
+                                        usersRemoved++;
+                                        fileModified = true;
+                                    }
+                                }
+
+                                if (fileModified)
                                 {
                                     var options = new JsonSerializerOptions { WriteIndented = true };
-                                    string updatedJson = JsonSerializer.Serialize(filteredLogs, options);
+                                    string updatedJson = JsonSerializer.Serialize(dayLogs, options);
                                     File.WriteAllText(file, updatedJson);
                                     deletedLogFiles++;
                                 }
@@ -133,7 +143,7 @@ namespace discord_bot.SmallDat
                         }
                     }
 
-                    Console.WriteLine($"Processed {filesProcessed} log files, removed guild data from {deletedLogFiles}");
+                    Console.WriteLine($"Processed {filesProcessed} log files, removed guild data from {deletedLogFiles} files ({usersRemoved} user entries)");
                 }
 
                 string configPath = Path.Combine(AppContext.BaseDirectory, "startup_config.json");
@@ -142,7 +152,7 @@ namespace discord_bot.SmallDat
                     try
                     {
                         string json = File.ReadAllText(configPath);
-                        var config = JsonSerializer.Deserialize<Dictionary<string, ulong>>(json);
+                        var config = JsonSerializer.Deserialize<Dictionary<string, StartupChannelConfig>>(json);
 
                         if (config != null && config.ContainsKey(guildId.ToString()))
                         {
