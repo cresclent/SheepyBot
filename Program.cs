@@ -1512,7 +1512,8 @@ host.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific cha
 });
 
 host.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announcements (Admin only)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null) =>
+    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
+    [SlashCommandParameter(Name = "role", Description = "the role to ping.. not putting anything in will make it not ping anything")] Role? role = null) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -1521,19 +1522,19 @@ host.AddSlashCommand("setstartupchannel", "Set the channel for bot startup annou
 
     if (context.Guild == null)
     {
-        return "❌ This command can only be used in a server!";
+        return "This command can only be used in a server!";
     }
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
-        return "❌ Could not find your user in this guild!";
+        return "Could not find your user in this guild!";
     }
 
     var permissions = guildUser.GetPermissions(context.Guild);
     if ((permissions & Permissions.Administrator) != Permissions.Administrator)
     {
-        return "❌ You need **Administrator** permissions to use this command!";
+        return "You need Administrator permissions to use this command!";
     }
 
     ulong targetChannelId;
@@ -1551,24 +1552,35 @@ host.AddSlashCommand("setstartupchannel", "Set the channel for bot startup annou
         var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
         if (guildChannel.Value == null)
         {
-            return "❌ That channel does not exist in this server!";
+            return "That channel does not exist in this server!";
         }
 
         if (guildChannel.Value is not TextGuildChannel)
         {
-            return "❌ Please select a text channel!";
+            return "Please select a text channel!";
         }
     }
     catch
     {
-        return "❌ Could not verify the channel!";
+        return "Could not verify the channel!";
+    }
+
+    ulong? targetRoleId = null;
+    if (role != null)
+    {
+        targetRoleId = role.Id;
+        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
+        if (guildRole.Value == null)
+        {
+            return "That role does not exist in this server!";
+        }
     }
 
     var restClient = host.Services.GetRequiredService<RestClient>();
     var startupAnnouncement = new StartupAnnouncement(restClient);
-    startupAnnouncement.SetAnnouncementChannel(guildId, targetChannelId);
+    startupAnnouncement.SetAnnouncementChannel(guildId, targetChannelId, targetRoleId);
 
-    return $"✅ Startup announcements have been set to <#{targetChannelId}> for this server!";
+    return $"Startup announcements have been set to <#{targetChannelId}> for this server!";
 });
 
 host.AddSlashCommand("disablestartup", "Disable bot startup announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
@@ -2003,12 +2015,17 @@ client.Ready += async (ReadyEventArgs args) =>
                     new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Channel, "channel", "The channel to send announcements to (optional)")
                     {
                         Required = false
+                    },
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Role, "role", "the role to ping.. not putting anything in will make it not ping anything")
+                    {
+                        Required = false
                     }
                 }
             },
             new SlashCommandProperties("disablestartup", "Disable bot startup announcements (Admin only)"),
             new SlashCommandProperties("startupstatus", "Check the status of startup announcements (Admin only)"),
             new SlashCommandProperties("allstartupchannels", "View all configured startup announcement channels (Bot owner only)"),
+
 
             new SlashCommandProperties("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)")
             {

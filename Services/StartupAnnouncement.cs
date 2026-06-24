@@ -53,15 +53,20 @@ public class StartupAnnouncement
         }
     }
 
-    public void SetAnnouncementChannel(ulong guildId, ulong channelId)
+    public void SetAnnouncementChannel(ulong guildId, ulong channelId, ulong? pingRoleId = null)
     {
         if (_config.Channels.ContainsKey(guildId))
         {
-            _config.Channels[guildId] = channelId;
+            _config.Channels[guildId].ChannelId = channelId;
+            _config.Channels[guildId].PingRoleId = pingRoleId;
         }
         else
         {
-            _config.Channels.Add(guildId, channelId);
+            _config.Channels.Add(guildId, new StartupChannelConfig
+            {
+                ChannelId = channelId,
+                PingRoleId = pingRoleId
+            });
         }
 
         SaveConfig();
@@ -96,15 +101,21 @@ public class StartupAnnouncement
         foreach (var kvp in _config.Channels)
         {
             var guildId = kvp.Key;
-            var channelId = kvp.Value;
+            var channelConfig = kvp.Value;
 
             try
             {
-                var channel = await _restClient.GetChannelAsync(channelId) as TextGuildChannel;
+                var channel = await _restClient.GetChannelAsync(channelConfig.ChannelId) as TextGuildChannel;
                 if (channel == null)
                     continue;
 
-                await channel.SendMessageAsync(message);
+                var finalMessage = message;
+                if (channelConfig.PingRoleId.HasValue)
+                {
+                    finalMessage += $"\n🔔 **Ping:** <@&{channelConfig.PingRoleId}>";
+                }
+
+                await channel.SendMessageAsync(finalMessage);
             }
             catch (Exception ex)
             {
@@ -115,9 +126,9 @@ public class StartupAnnouncement
 
     public string GetConfigInfo(ulong guildId)
     {
-        if (_config.Channels.TryGetValue(guildId, out var channelId))
+        if (_config.Channels.TryGetValue(guildId, out var config))
         {
-            return $"Startup announcements are enabled\nChannel ID: {channelId}";
+            return $"Startup announcements are enabled\nChannel ID: {config.ChannelId}\nRole ID: {(config.PingRoleId.HasValue ? config.PingRoleId.ToString() : "None")}";
         }
 
         return "Startup announcements are disabled for this guild.";
@@ -131,13 +142,30 @@ public class StartupAnnouncement
         var result = "Configured Startup Channels:\n\n";
         foreach (var kvp in _config.Channels)
         {
-            result += $"Guild ID: {kvp.Key} -> Channel ID: {kvp.Value}\n";
+            result += $"Guild ID: {kvp.Key} -> Channel ID: {kvp.Value.ChannelId} -> Role ID: {(kvp.Value.PingRoleId.HasValue ? kvp.Value.PingRoleId.ToString() : "None")}\n";
         }
         return result;
+    }
+
+    public async Task<bool> ClearGuildConfig(ulong guildId)
+    {
+        if (_config.Channels.ContainsKey(guildId))
+        {
+            _config.Channels.Remove(guildId);
+            SaveConfig();
+            return true;
+        }
+        return false;
     }
 }
 
 public class StartupConfig
 {
-    public Dictionary<ulong, ulong> Channels { get; set; } = new Dictionary<ulong, ulong>();
+    public Dictionary<ulong, StartupChannelConfig> Channels { get; set; } = new Dictionary<ulong, StartupChannelConfig>();
+}
+
+public class StartupChannelConfig
+{
+    public ulong ChannelId { get; set; }
+    public ulong? PingRoleId { get; set; }
 }
