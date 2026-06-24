@@ -1,4 +1,6 @@
-﻿using NetCord;
+﻿// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using NetCord;
 using NetCord.Gateway;
 using discord_bot.userdataModels;
 using System;
