@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using discord_bot.Tools;
 
 namespace discord_bot.SmallDat
 {
@@ -43,7 +44,7 @@ namespace discord_bot.SmallDat
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to load server list: {ex.Message}");
+                    new Write().WriteLine($"Failed to load server list: {ex.Message}");
                 }
             }
         }
@@ -58,7 +59,7 @@ namespace discord_bot.SmallDat
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to save server list: {ex.Message}");
+                new Write().WriteLine($"Failed to save server list: {ex.Message}");
             }
         }
 
@@ -67,7 +68,7 @@ namespace discord_bot.SmallDat
             if (_servers.Add(guildId))
             {
                 SaveServers();
-                Console.WriteLine($"Server {guildId} added to tracking list");
+                new Write().WriteLine($"Server {guildId} added to tracking list");
             }
         }
 
@@ -76,7 +77,7 @@ namespace discord_bot.SmallDat
             if (_servers.Remove(guildId))
             {
                 SaveServers();
-                Console.WriteLine($"Server {guildId} removed from tracking list");
+                new Write().WriteLine($"Server {guildId} removed from tracking list");
             }
         }
 
@@ -92,7 +93,7 @@ namespace discord_bot.SmallDat
 
         public async Task CleanupServerData(ulong guildId)
         {
-            Console.WriteLine($"Cleaning up data for server {guildId}...");
+            new Write().WriteLine($"Cleaning up data for server {guildId}...");
 
             try
             {
@@ -139,11 +140,11 @@ namespace discord_bot.SmallDat
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error processing {file}: {ex.Message}");
+                            new Write().WriteLine($"Error processing {file}: {ex.Message}");
                         }
                     }
 
-                    Console.WriteLine($"Processed {filesProcessed} log files, removed guild data from {deletedLogFiles} files ({usersRemoved} user entries)");
+                    new Write().WriteLine($"Processed {filesProcessed} log files, removed guild data from {deletedLogFiles} files ({usersRemoved} user entries)");
                 }
 
                 string configPath = Path.Combine(AppContext.BaseDirectory, "startup_config.json");
@@ -160,21 +161,21 @@ namespace discord_bot.SmallDat
                             var options = new JsonSerializerOptions { WriteIndented = true };
                             string updatedJson = JsonSerializer.Serialize(config, options);
                             File.WriteAllText(configPath, updatedJson);
-                            Console.WriteLine($"Removed guild {guildId} from startup_config.json");
+                            new Write().WriteLine($"Removed guild {guildId} from startup_config.json");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error processing startup_config.json: {ex.Message}");
+                        new Write().WriteLine($"Error processing startup_config.json: {ex.Message}");
                     }
                 }
 
                 RemoveServer(guildId);
-                Console.WriteLine($"Server {guildId} data cleanup completed!");
+                new Write().WriteLine($"Server {guildId} data cleanup completed!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to cleanup data for server {guildId}: {ex.Message}");
+                new Write().WriteLine($"Failed to cleanup data for server {guildId}: {ex.Message}");
             }
         }
 
@@ -185,14 +186,14 @@ namespace discord_bot.SmallDat
 
             if (removedServers.Count == 0)
             {
-                Console.WriteLine("All tracked servers are still present");
+                new Write().WriteLine("All tracked servers are still present");
                 return;
             }
 
-            Console.WriteLine($"Found {removedServers.Count} servers that the bot is no longer in:");
+            new Write().WriteLine($"Found {removedServers.Count} servers that the bot is no longer in:");
             foreach (var serverId in removedServers)
             {
-                Console.WriteLine($"- {serverId}");
+                new Write().WriteLine($"- {serverId}");
                 await CleanupServerData(serverId);
             }
         }

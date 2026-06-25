@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using discord_bot.Tools;
 using NetCord.Services.ApplicationCommands;
 using System;
 using System.Collections.Generic;
@@ -70,7 +71,7 @@ namespace discord_bot.userdataModels
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error loading ignored users: {ex.Message}");
+                    new Write().WriteLine($"Error loading ignored users: {ex.Message}");
                 }
             }
         }
@@ -124,7 +125,7 @@ namespace discord_bot.userdataModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving ignored users: {ex.Message}");
+                new Write().WriteLine($"Error saving ignored users: {ex.Message}");
             }
         }
 
@@ -182,7 +183,7 @@ namespace discord_bot.userdataModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Logger initialization failed: {ex.Message}");
+                new Write().WriteLine($"Logger initialization failed: {ex.Message}");
                 _isInitialized = false;
             }
         }
@@ -241,7 +242,7 @@ namespace discord_bot.userdataModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Logger initialization failed: {ex.Message}");
+                new Write().WriteLine($"Logger initialization failed: {ex.Message}");
                 _isInitialized = false;
             }
         }
@@ -300,7 +301,7 @@ namespace discord_bot.userdataModels
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error loading logger data: {ex.Message}");
+                            new Write().WriteLine($"Error loading logger data: {ex.Message}");
                             allUserData = new List<UserDataLogger>();
                         }
                     }
@@ -361,7 +362,7 @@ namespace discord_bot.userdataModels
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error saving logger data: {ex.Message}");
+                    new Write().WriteLine($"Error saving logger data: {ex.Message}");
                 }
             }
         }
@@ -395,7 +396,7 @@ namespace discord_bot.userdataModels
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading logs: {ex.Message}");
+                new Write().WriteLine($"Error reading logs: {ex.Message}");
                 return new List<UserDataLogger>();
             }
         }

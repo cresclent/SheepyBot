@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
 using discord_bot.Helpers;
-using discord_bot.Services;
+using discord_bot.Tools;
 using discord_bot.SmallDat;
 using discord_bot.userdataModels;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +18,7 @@ using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 using System.Text;
 using System.Text.Json;
+using discord_bot.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -30,7 +31,7 @@ var token = builder.Configuration["Discord:Token"]
 
 if (string.IsNullOrEmpty(token))
 {
-    Console.WriteLine("ERROR: Discord bot token not found!");
+    new Write().WriteLine("ERROR: Discord bot token not found!");
     return;
 }
 
@@ -299,11 +300,19 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"`/inventory` - Shows what you have pulled using `/pull`\n" +
            $"`/pity` - Shows your current pity count and whether you're guaranteed\n" +
            $"`/coinflip` - Simple coinflip command\n" +
-           $"`/bannerreset` - Reset the banner (Cresclent only)\n" +
-           $"`/setstartupchannel [channel]` - Sets the startup channel for this server (Admin only)\n" +
+           $"`/bannerreset` - Reset the banner (Cresclent only)\n\n" +
+           $"## 📢 **Announcement Commands**\n" +
+           $"`/setstartupchannel [channel] [role]` - Sets the startup channel for this server (Admin only)\n" +
+           $"  • If no channel is provided, uses the current channel\n" +
            $"`/disablestartup` - Disable startup announcements for this server (Admin only)\n" +
            $"`/startupstatus` - Displays startup announcement status for this server (Admin only)\n" +
-           $"`/allstartupchannels` - View all configured startup channels (Bot owner only)\n\n" +
+           $"`/allstartupchannels` - View all configured startup channels (Bot owner only)\n" +
+           $"`/setglobalchannel [channel] [role]` - Sets the global announcement channel for this server (Admin only)\n" +
+           $"  • If no channel is provided, uses the current channel\n" +
+           $"`/disableglobal` - Disable global announcements for this server (Admin only)\n" +
+           $"`/globalstatus` - Displays global announcement status for this server (Admin only)\n" +
+           $"`/allglobalchannels` - View all configured global announcement channels (Bot owner only)\n" +
+           $"`/globalannounce <message>` - Send a global announcement to all configured channels (Bot owner only)\n\n" +
            $"## 💡 **Bot Suggestion Commands**\n" +
            $"`/suggest <suggestion>` - Suggest a new feature for the bot\n" +
            $"`/viewsuggestion <id>` - View a specific suggestion by ID\n" +
@@ -336,10 +345,12 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"`/ignoreuser <user>` - Add a user to the ignore list (Admin only, specific channel)\n" +
            $"`/unignoreuser <user>` - Remove a user from the ignore list (Admin only, specific channel)\n" +
            $"`/listignored` - List all ignored users (Admin only, specific channel)\n\n" +
+           $"## 🛠️ **Server Management Commands**\n" +
+           $"`/cleanupremovedservers` - Check and cleanup data for removed servers (Bot owner only)\n\n" +
            $"## ℹ️ **Info**\n" +
-           $"`/github` simple github command with link to repo\n" +
-           $"`/privacy` the privacy policy as stated in github\n" +
-           $"`/terms` the terms of service as stated in github\n" +
+           $"`/github` - Link to the open source code\n" +
+           $"`/privacy` - The privacy policy\n" +
+           $"`/terms` - The terms of service\n\n" +
            $"Ask Cresclent for more info (can be DMs, may take a while to answer)\n" +
            $"If you want your data removed from this bot, send me a DM immediately. I will add you to an ignore list.";
 
@@ -563,7 +574,7 @@ host.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (Appl
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Failed to send suggestion: {ex.Message}");
+        new Write().WriteLine($"Failed to send suggestion: {ex.Message}");
         return $"❌ Failed to submit suggestion: {ex.Message}";
     }
 });
@@ -1592,25 +1603,25 @@ host.AddSlashCommand("disablestartup", "Disable bot startup announcements for th
 
     if (context.Guild == null)
     {
-        return "❌ This command can only be used in a server!";
+        return "This command can only be used in a server!";
     }
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
-        return "❌ Could not find your user in this guild!";
+        return "Could not find your user in this guild!";
     }
 
     var permissions = guildUser.GetPermissions(context.Guild);
     if ((permissions & Permissions.Administrator) != Permissions.Administrator)
     {
-        return "❌ You need **Administrator** permissions to use this command!";
+        return "You need Administrator permissions to use this command!";
     }
 
     var restClient = host.Services.GetRequiredService<RestClient>();
     var startupAnnouncement = new StartupAnnouncement(restClient);
     startupAnnouncement.DisableAnnouncements(guildId);
-    return $"❌ Startup announcements have been **disabled** for this server.";
+    return "Startup announcements have been disabled for this server.";
 });
 
 host.AddSlashCommand("startupstatus", "Check the status of startup announcements for this guild", async (ApplicationCommandContext context) =>
@@ -1622,19 +1633,19 @@ host.AddSlashCommand("startupstatus", "Check the status of startup announcements
 
     if (context.Guild == null)
     {
-        return "❌ This command can only be used in a server!";
+        return "This command can only be used in a server!";
     }
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
-        return "❌ Could not find your user in this guild!";
+        return "Could not find your user in this guild!";
     }
 
     var permissions = guildUser.GetPermissions(context.Guild);
     if ((permissions & Permissions.Administrator) != Permissions.Administrator)
     {
-        return "❌ You need **Administrator** permissions to use this command!";
+        return "You need Administrator permissions to use this command!";
     }
 
     var restClient = host.Services.GetRequiredService<RestClient>();
@@ -1642,7 +1653,7 @@ host.AddSlashCommand("startupstatus", "Check the status of startup announcements
     var info = startupAnnouncement.GetConfigInfo(guildId);
     var guildName = context.Guild.Name;
 
-    return $"📢 **Startup Announcement Status**\n\n" +
+    return $"**Startup Announcement Status**\n\n" +
            $"**Guild:** {guildName}\n" +
            $"{info}";
 });
@@ -1655,12 +1666,199 @@ host.AddSlashCommand("allstartupchannels", "View all configured startup announce
 
     if (userId != 1157243448093573120)
     {
-        return "❌ Only the bot owner can use this command!";
+        return "Only the bot owner can use this command!";
     }
 
     var restClient = host.Services.GetRequiredService<RestClient>();
     var startupAnnouncement = new StartupAnnouncement(restClient);
     return startupAnnouncement.GetAllConfigInfo();
+});
+
+host.AddSlashCommand("setglobalchannel", "Set the channel for global announcements (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
+    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "setglobalchannel");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    ulong targetChannelId;
+    if (channel == null)
+    {
+        targetChannelId = context.Channel.Id;
+    }
+    else
+    {
+        targetChannelId = channel.Id;
+    }
+
+    try
+    {
+        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
+        if (guildChannel.Value == null)
+        {
+            return "That channel does not exist in this server!";
+        }
+
+        if (guildChannel.Value is not TextGuildChannel)
+        {
+            return "Please select a text channel!";
+        }
+    }
+    catch
+    {
+        return "Could not verify the channel!";
+    }
+
+    ulong? targetRoleId = null;
+    if (role != null)
+    {
+        targetRoleId = role.Id;
+        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
+        if (guildRole.Value == null)
+        {
+            return "That role does not exist in this server!";
+        }
+    }
+
+    var restClient = host.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    globalAnnouncement.SetGlobalChannel(guildId, targetChannelId, targetRoleId);
+
+    if (channel == null)
+    {
+        return $"Global announcements have been set to the current channel <#{targetChannelId}> for this server!";
+    }
+    else
+    {
+        return $"Global announcements have been set to <#{targetChannelId}> for this server!";
+    }
+});
+
+host.AddSlashCommand("globalannounce", "Send a global announcement to all configured channels (Bot owner only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "message", Description = "The announcement message")] string message,
+    [SlashCommandParameter(Name = "ping", Description = "Whether to ping the configured role (true/false)")] bool? ping = null) =>
+{
+    var userId = context.User.Id;
+
+    logger.Logger(context, "globalannounce");
+
+    if (userId != 1157243448093573120)
+    {
+        return "Only the bot owner can send global announcements!";
+    }
+
+    if (string.IsNullOrWhiteSpace(message))
+    {
+        return "Please provide a message!";
+    }
+
+    var restClient = host.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+
+    bool shouldPing = ping ?? false;
+    await globalAnnouncement.SendGlobalAnnouncementAsync(message, shouldPing);
+
+    return $"Global announcement sent successfully to all configured channels! (Ping: {(shouldPing ? "Enabled" : "Disabled")})";
+});
+
+host.AddSlashCommand("disableglobal", "Disable global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "disableglobal");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = host.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    globalAnnouncement.DisableGlobalAnnouncements(guildId);
+
+    return "Global announcements have been disabled for this server.";
+});
+
+host.AddSlashCommand("globalstatus", "Check the status of global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "globalstatus");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = host.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    var info = globalAnnouncement.GetGlobalConfigInfo(guildId);
+    var guildName = context.Guild.Name;
+
+    return $"**Global Announcement Status**\n\n" +
+           $"**Guild:** {guildName}\n" +
+           $"{info}";
+});
+
+host.AddSlashCommand("allglobalchannels", "View all configured global announcement channels (Bot owner only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+
+    logger.Logger(context, "allglobalchannels");
+
+    if (userId != 1157243448093573120)
+    {
+        return "Only the bot owner can use this command!";
+    }
+
+    var restClient = host.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    return globalAnnouncement.GetAllGlobalConfigInfo();
 });
 
 host.AddSlashCommand("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)", async (ApplicationCommandContext context,
@@ -1916,8 +2114,8 @@ var restClient = host.Services.GetRequiredService<RestClient>();
 
 client.Ready += async (ReadyEventArgs args) =>
 {
-    Console.WriteLine("Bot is ready!");
-    Console.WriteLine($"Logged in as: {args.User?.Username ?? "Unknown"}");
+    new Write().WriteLine("Bot is ready!");
+    new Write().WriteLine($"Logged in as: {args.User?.Username ?? "Unknown"}");
 
     try
     {
@@ -1931,12 +2129,12 @@ client.Ready += async (ReadyEventArgs args) =>
 
         for (int i = 0; i < 5 && currentGuilds.Count == 0; i++)
         {
-            Console.WriteLine($"Waiting for cache to populate... (attempt {i + 1}/5)");
+            new Write().WriteLine($"Waiting for cache to populate... (attempt {i + 1}/5)");
             await Task.Delay(3000);
             currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
         }
 
-        Console.WriteLine($"Found {currentGuilds.Count} servers in cache");
+        new Write().WriteLine($"Found {currentGuilds.Count} servers in cache");
 
         foreach (var guildId in currentGuilds)
         {
@@ -1946,7 +2144,7 @@ client.Ready += async (ReadyEventArgs args) =>
         await serverTracker.CheckAndCleanupRemovedServers(currentGuilds);
 
         var trackedServers = serverTracker.GetAllServers();
-        Console.WriteLine($"Tracking {trackedServers.Count} servers total");
+        new Write().WriteLine($"Tracking {trackedServers.Count} servers total");
 
         var commands = new List<ApplicationCommandProperties>
         {
@@ -2026,6 +2224,37 @@ client.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("startupstatus", "Check the status of startup announcements (Admin only)"),
             new SlashCommandProperties("allstartupchannels", "View all configured startup announcement channels (Bot owner only)"),
 
+            new SlashCommandProperties("setglobalchannel", "Set the channel for global announcements (Admin only)")
+            {
+                Options = new[]
+                {
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Channel, "channel", "The channel to send announcements to (optional)")
+                    {
+                        Required = false
+                    },
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Role, "role", "The role to ping (optional)")
+                    {
+                        Required = false
+                    }
+                }
+            },
+            new SlashCommandProperties("globalannounce", "Send a global announcement to all configured channels (Bot owner only)")
+            {
+                Options = new[]
+                    {
+                        new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "message", "The announcement message")
+                        {
+                            Required = true
+                        },
+                        new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Boolean, "ping", "Whether to ping the configured role (true/false)")
+                        {
+                        Required = false
+                    }
+                }
+            },
+            new SlashCommandProperties("disableglobal", "Disable global announcements for this guild (Admin only)"),
+            new SlashCommandProperties("globalstatus", "Check the status of global announcements for this guild (Admin only)"),
+            new SlashCommandProperties("allglobalchannels", "View all configured global announcement channels (Bot owner only)"),
 
             new SlashCommandProperties("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)")
             {
@@ -2055,40 +2284,40 @@ client.Ready += async (ReadyEventArgs args) =>
         };
 
         await restClient.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
-        Console.WriteLine($"{commands.Count} commands registered!");
-        Console.WriteLine("User data saved to: userdata/[userId].json");
-        Console.WriteLine("Suggestions saved to: suggestions/suggestion-[id].json");
+        new Write().WriteLine($"{commands.Count} commands registered!");
+        new Write().WriteLine("User data saved to: userdata/[userId].json");
+        new Write().WriteLine("Suggestions saved to: suggestions/suggestion-[id].json");
 
         string commandsstring = "";
         foreach (var command in commands)
         {
             commandsstring += $"/{command.Name}, ";
         }
-        Console.WriteLine($"Commands: {commandsstring.TrimEnd(',', ' ')}");
+        new Write().WriteLine($"Commands: {commandsstring.TrimEnd(',', ' ')}");
 
         var startupAnnouncement = new StartupAnnouncement(restClient);
         await startupAnnouncement.SendStartupAnnouncementAsync();
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error: {ex.Message}");
-        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        new Write().WriteLine($"Error: {ex.Message}");
+        new Write().WriteLine($"Stack trace: {ex.StackTrace}");
     }
 };
 
 Console.CancelKeyPress += (sender, e) =>
 {
     e.Cancel = true;
-    Console.WriteLine("\nBot is shutting down...");
-    Console.WriteLine("Goodbye!");
+    new Write().WriteLine("\nBot is shutting down...");
+    new Write().WriteLine("Goodbye!");
     Environment.Exit(0);
 };
 
 AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
 {
-    Console.WriteLine("Bot is shutting down...");
-    Console.WriteLine("Goodbye!");
+    new Write().WriteLine("Bot is shutting down...");
+    new Write().WriteLine("Goodbye!");
 };
 
-Console.WriteLine("Starting bot...");
+new Write().WriteLine("Starting bot...");
 await host.RunAsync();

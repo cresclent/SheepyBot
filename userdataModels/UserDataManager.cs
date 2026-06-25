@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using discord_bot.Tools;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +18,7 @@ namespace discord_bot.userdataModels
         {
             _dataDirectory = Path.Combine(AppContext.BaseDirectory, "userdata");
             Directory.CreateDirectory(_dataDirectory);
-            Console.WriteLine($"User data directory: {_dataDirectory}");
+            new Write().WriteLine($"User data directory: {_dataDirectory}");
         }
 
         private string GetUserFilePath(ulong userId)
@@ -50,7 +51,7 @@ namespace discord_bot.userdataModels
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error loading user data: {ex.Message}");
+                        new Write().WriteLine($"Error loading user data: {ex.Message}");
                     }
                 }
 
@@ -75,7 +76,7 @@ namespace discord_bot.userdataModels
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error saving user data: {ex.Message}");
+                    new Write().WriteLine($"Error saving user data: {ex.Message}");
                 }
             }
         }

@@ -1,15 +1,17 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using discord_bot.Tools;
+using discord_bot.Services;
 using NetCord;
 using NetCord.Rest;
-using System.Text.Json;
 using System.Collections.Generic;
+using System.Text.Json;
 
 public class StartupAnnouncement
 {
     private readonly RestClient _restClient;
     private readonly string _configPath;
-    private StartupConfig _config;
+    private GlobalConfig _config;
 
     public StartupAnnouncement(RestClient restClient)
     {
@@ -25,16 +27,16 @@ public class StartupAnnouncement
             try
             {
                 string json = File.ReadAllText(_configPath);
-                _config = JsonSerializer.Deserialize<StartupConfig>(json) ?? new StartupConfig();
+                _config = JsonSerializer.Deserialize<GlobalConfig>(json) ?? new GlobalConfig();
             }
             catch
             {
-                _config = new StartupConfig();
+                _config = new GlobalConfig();
             }
         }
         else
         {
-            _config = new StartupConfig();
+            _config = new GlobalConfig();
             SaveConfig();
         }
     }
@@ -49,7 +51,7 @@ public class StartupAnnouncement
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to save startup config: {ex.Message}");
+            new Write().WriteLine($"Failed to save startup config: {ex.Message}");
         }
     }
 
@@ -98,6 +100,8 @@ public class StartupAnnouncement
                       $"🕐 **Time Since:** <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:R>\n" +
                       $"🤖 **Status:** ✅ Online";
 
+        var guildsToRemove = new List<ulong>();
+
         foreach (var kvp in _config.Channels)
         {
             var guildId = kvp.Key;
@@ -107,7 +111,11 @@ public class StartupAnnouncement
             {
                 var channel = await _restClient.GetChannelAsync(channelConfig.ChannelId) as TextGuildChannel;
                 if (channel == null)
+                {
+                    new Write().WriteLine($"Channel {channelConfig.ChannelId} not found for guild {guildId}, removing config");
+                    guildsToRemove.Add(guildId);
                     continue;
+                }
 
                 var finalMessage = message;
                 if (channelConfig.PingRoleId.HasValue)
@@ -119,11 +127,30 @@ public class StartupAnnouncement
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to send startup announcement to guild {guildId}: {ex.Message}");
+                new Write().WriteLine($"Failed to send startup announcement to guild {guildId}: {ex.Message}");
+
+                if (ex.Message.Contains("403") || ex.Message.Contains("Forbidden") || ex.Message.Contains("Missing Access"))
+                {
+                    new Write().WriteLine($"Bot lacks access to guild {guildId} or channel {channelConfig.ChannelId}, removing config");
+                    guildsToRemove.Add(guildId);
+                }
             }
         }
-    }
 
+        foreach (var guildId in guildsToRemove)
+        {
+            if (_config.Channels.ContainsKey(guildId))
+            {
+                _config.Channels.Remove(guildId);
+                new Write().WriteLine($"Removed guild {guildId} from startup announcement config due to missing access");
+            }
+        }
+
+        if (guildsToRemove.Count > 0)
+        {
+            SaveConfig();
+        }
+    }
     public string GetConfigInfo(ulong guildId)
     {
         if (_config.Channels.TryGetValue(guildId, out var config))

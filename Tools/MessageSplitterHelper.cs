@@ -1,4 +1,5 @@
-﻿using System;
+﻿//feel free to use this as it doesnt fall under copyright!
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using NetCord;
