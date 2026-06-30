@@ -110,7 +110,14 @@ string banner = fiveStarCharacters[random.Next(fiveStarCharacters.Length)];
 UserDataLogger.Init();
 UserDataLogger logger = new UserDataLogger();
 
-string gameStatus = "Genshin pulling for Cresclent";
+string[] statuses = new string[]()
+{
+    "Genshin pulling for Cresclent",
+    "I am a Sheepy boi! I am a Sheepy Boi! a Sheepy Sheepy Sheepy Sheepy boy!",
+    "oooh mysterious!" //god damn lemme add some more on my school laptop or sum
+}
+
+string gameStatus = statuses[random.Next(0, statuses.Count)]; //I'm guessing this is count I did this on my phone!
 
 var cooldowns = new Dictionary<ulong, DateTime>();
 
