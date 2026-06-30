@@ -172,6 +172,52 @@ namespace discord_bot.SmallDat
                     }
                 }
 
+                string globalConfigPath = Path.Combine(AppContext.BaseDirectory, "global_config.json");
+                if (File.Exists(globalConfigPath))
+                {
+                    try
+                    {
+                        string json = File.ReadAllText(globalConfigPath);
+                        var config = JsonSerializer.Deserialize<Dictionary<string, GlobalChannelConfig>>(json);
+
+                        if (config != null && config.ContainsKey(guildId.ToString()))
+                        {
+                            config.Remove(guildId.ToString());
+                            var options = new JsonSerializerOptions { WriteIndented = true };
+                            string updatedJson = JsonSerializer.Serialize(config, options);
+                            File.WriteAllText(globalConfigPath, updatedJson);
+                            new Write().WriteLine($"Removed guild {guildId} from global_config.json");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        new Write().WriteLine($"Error processing global_config.json: {ex.Message}");
+                    }
+                }
+
+                string voteConfigPath = Path.Combine(AppContext.BaseDirectory, "voteconfig.json");
+                if (File.Exists(voteConfigPath))
+                {
+                    try
+                    {
+                        string json = File.ReadAllText(voteConfigPath);
+                        var config = JsonSerializer.Deserialize<Dictionary<string, VoteChannelConfig>>(json);
+
+                        if (config != null && config.ContainsKey(guildId.ToString()))
+                        {
+                            config.Remove(guildId.ToString());
+                            var options = new JsonSerializerOptions { WriteIndented = true };
+                            string updatedJson = JsonSerializer.Serialize(config, options);
+                            File.WriteAllText(voteConfigPath, updatedJson);
+                            new Write().WriteLine($"Removed guild {guildId} from voteconfig.json");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        new Write().WriteLine($"Error processing voteconfig.json: {ex.Message}");
+                    }
+                }
+
                 RemoveServer(guildId);
                 new Write().WriteLine($"Server {guildId} data cleanup completed!");
             }
@@ -199,5 +245,23 @@ namespace discord_bot.SmallDat
                 await CleanupServerData(serverId);
             }
         }
+    }
+
+    public class StartupChannelConfig
+    {
+        public ulong ChannelId { get; set; }
+        public ulong? RoleId { get; set; }
+    }
+
+    public class GlobalChannelConfig
+    {
+        public ulong ChannelId { get; set; }
+        public ulong? RoleId { get; set; }
+    }
+
+    public class VoteChannelConfig
+    {
+        public ulong ChannelId { get; set; }
+        public ulong? RoleId { get; set; }
     }
 }
