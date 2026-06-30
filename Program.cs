@@ -44,8 +44,6 @@ builder.Services
     .AddDiscordGateway()
     .AddApplicationCommands();
 
-var host = builder.Build();
-
 string[] fiveStarCharacters = new[]
 {
     "Sandrone", "Albedo", "Alhaitham", "Arataki Itto", "Arlecchino",
@@ -197,6 +195,17 @@ void UpdateSuggestion(int id, object data)
     File.WriteAllText(filePath, json);
 }
 
+// ===== VOTESERVICE REGISTRATION - MUST BE BEFORE host.Build() =====
+builder.Services.AddSingleton<VoteService>(provider =>
+{
+    var client = provider.GetRequiredService<GatewayClient>();
+    var rest = provider.GetRequiredService<RestClient>();
+    return new VoteService(client, rest, fiveStarCharacters, banner);
+});
+
+// ===== BUILD THE HOST =====
+var host = builder.Build();
+
 host.AddSlashCommand("pity", "Check your current pity count and stats", (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
@@ -282,9 +291,11 @@ host.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandCon
 host.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandContext context) =>
 {
     logger.Logger(context, "banner");
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    var currentBanner = voteService.GetCurrentBanner();
 
-    return $"📌 **Current Banner:** {banner}\n\n" +
-           $"This banner features the 5-star character **{banner}**!\n" +
+    return $"📌 **Current Banner:** {currentBanner}\n\n" +
+           $"This banner features the 5-star character **{currentBanner}**!\n" +
            $"Use `/pull` to wish on this banner!";
 });
 
@@ -300,7 +311,14 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"`/inventory` - Shows what you have pulled using `/pull`\n" +
            $"`/pity` - Shows your current pity count and whether you're guaranteed\n" +
            $"`/coinflip` - Simple coinflip command\n" +
-           $"`/bannerreset` - Reset the banner (Cresclent only)\n\n" +
+           $"`/bannerreset` - Reset the banner (Cresclent only)\n" +
+           $"`/votebanner` - Start a vote to reroll the banner\n" +
+           $"`/votehistory` - View recent banner vote history\n" +
+           $"`/setvotechannel [channel] [role]` - Sets the vote channel for this server (Admin only)\n" +
+           $"  • If no channel is provided, uses the current channel\n" +
+           $"`/disablevotechannel` - Disable banner votes for this server (Admin only)\n" +
+           $"`/votechannelstatus` - Displays vote channel status for this server (Admin only)\n" +
+           $"`/allvotechannels` - View all configured vote channels (Bot owner only)\n\n" +
            $"## 📢 **Announcement Commands**\n" +
            $"`/setstartupchannel [channel] [role]` - Sets the startup channel for this server (Admin only)\n" +
            $"  • If no channel is provided, uses the current channel\n" +
@@ -387,8 +405,10 @@ host.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by cresc
 
     if (userId == 1157243448093573120)
     {
-        banner = fiveStarCharacters[random.Next(fiveStarCharacters.Length)];
-        return $"# Banner is being rerolled to:\n{banner}";
+        var voteService = host.Services.GetRequiredService<VoteService>();
+        voteService.RerollBanner();
+        var currentBanner = voteService.GetCurrentBanner();
+        return $"# Banner is being rerolled to:\n{currentBanner}";
     }
     else
     {
@@ -399,6 +419,8 @@ host.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by cresc
 host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    string currentBanner = voteService.GetCurrentBanner();
 
     logger.Logger(context, "pull");
 
@@ -437,7 +459,7 @@ host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (A
             }
             else
             {
-                result = banner;
+                result = currentBanner;
                 data.IsGuaranteed = false;
                 pulledFiveStar = result;
                 gotBannerCharacter = true;
@@ -481,7 +503,7 @@ host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (A
     dataManager.SaveUserData(userId, data);
 
     string response = $"🎲 **10 Pull Results**\n";
-    response += $"📌 Banner: **{banner}**\n\n";
+    response += $"📌 Banner: **{currentBanner}**\n\n";
     response += string.Join("\n", results);
     response += $"\n\n**Summary:**\n";
     response += $"{GetStars(3)} {threeStarCount} 3-Star\n";
@@ -503,7 +525,7 @@ host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (A
 
     if (response.Length > 2000)
     {
-        response = $"🎲 **10 Pull Results** (Banner: **{banner}**)\n" +
+        response = $"🎲 **10 Pull Results** (Banner: **{currentBanner}**)\n" +
                   $"{GetStars(3)} 3-Stars: {threeStarCount} | {GetStars(4)} 4-Stars: {fourStarCount} | {GetStars(5)} 5-Stars: {fiveStarCount}\n" +
                   $"Pity: {data.Pity}/90" +
                   (data.IsGuaranteed ? " (Guaranteed)" : "") +
@@ -511,6 +533,170 @@ host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (A
     }
 
     return response;
+});
+
+host.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (ApplicationCommandContext context) =>
+{
+    var voteService = host.Services.GetRequiredService<VoteService>();
+
+    logger.Logger(context, "votebanner");
+
+    var result = await voteService.StartRerollVote(context.Interaction as SlashCommandInteraction);
+    return result;
+});
+host.AddSlashCommand("votehistory", "View recent banner vote history", async (ApplicationCommandContext context) =>
+{
+    logger.Logger(context, "votehistory");
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    var history = voteService.GetVoteHistory(10);
+
+    if (history.Count == 0)
+    {
+        return "📭 No vote history found!";
+    }
+
+    var response = "📊 **Banner Vote History**\n\n";
+    foreach (var vote in history)
+    {
+        response += $"{(vote.Passed ? "✅" : "❌")} {vote.Timestamp:yyyy-MM-dd HH:mm} - ";
+        response += vote.Passed ? $"Rerolled to **{vote.NewBanner}**" : $"Kept **{vote.OldBanner}**";
+        response += $" ({vote.Upvotes} up, {vote.Downvotes} down, net: {vote.NetVotes})\n";
+    }
+
+    return response;
+});
+
+host.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "channel", Description = "The channel to send votes to (optional)")] Channel? channel = null,
+    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "setvotechannel");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    ulong targetChannelId;
+    if (channel == null)
+    {
+        targetChannelId = context.Channel.Id;
+    }
+    else
+    {
+        targetChannelId = channel.Id;
+    }
+
+    try
+    {
+        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
+        if (guildChannel.Value == null)
+        {
+            return "That channel does not exist in this server!";
+        }
+
+        if (guildChannel.Value is not TextGuildChannel)
+        {
+            return "Please select a text channel!";
+        }
+    }
+    catch
+    {
+        return "Could not verify the channel!";
+    }
+
+    ulong? targetRoleId = null;
+    if (role != null)
+    {
+        targetRoleId = role.Id;
+        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
+        if (guildRole.Value == null)
+        {
+            return "That role does not exist in this server!";
+        }
+    }
+
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    voteService.SetVoteChannel(guildId, targetChannelId, targetRoleId);
+
+    string roleText = targetRoleId.HasValue ? $" with role <@&{targetRoleId}>" : " with no role ping";
+    return $"✅ Vote channel has been set to <#{targetChannelId}>{roleText} for this server!";
+});
+
+host.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "disablevotechannel");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    voteService.DisableVoteChannel(guildId);
+
+    return "✅ Vote channel has been disabled for this server.";
+});
+
+host.AddSlashCommand("votechannelstatus", "Check the status of vote channel for this guild", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    logger.Logger(context, "votechannelstatus");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    return voteService.GetVoteChannelStatus(guildId);
+});
+
+host.AddSlashCommand("allvotechannels", "View all configured vote channels (Bot owner only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+
+    logger.Logger(context, "allvotechannels");
+
+    if (userId != 1157243448093573120)
+    {
+        return "Only the bot owner can use this command!";
+    }
+
+    var voteService = host.Services.GetRequiredService<VoteService>();
+    return voteService.GetAllVoteChannels();
 });
 
 host.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (ApplicationCommandContext context,
@@ -2159,6 +2345,25 @@ client.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("alldata", "Show ALL command data (Admin only, specific channel)"),
             new SlashCommandProperties("guildleaderboard", "Show top users in this guild (This Month)"),
             new SlashCommandProperties("totalleaderboard", "Show top users across ALL guilds (This Month)"),
+            new SlashCommandProperties("votebanner", "Start a vote to reroll the banner"),
+            new SlashCommandProperties("votehistory", "View recent banner vote history"),
+            new SlashCommandProperties("setvotechannel", "Set the channel for banner votes (Admin only)")
+            {
+                Options = new[]
+                {
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Channel, "channel", "The channel to send votes to (optional)")
+                    {
+                        Required = false
+                    },
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Role, "role", "The role to ping (optional)")
+                    {
+                        Required = false
+                    }
+                }
+            },
+            new SlashCommandProperties("disablevotechannel", "Disable banner votes for this guild (Admin only)"),
+            new SlashCommandProperties("votechannelstatus", "Check the status of vote channel for this guild"),
+            new SlashCommandProperties("allvotechannels", "View all configured vote channels (Bot owner only)"),
 
             new SlashCommandProperties("suggest", "Suggest a new feature for the bot")
             {
