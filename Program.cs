@@ -110,14 +110,23 @@ string banner = fiveStarCharacters[random.Next(fiveStarCharacters.Length)];
 UserDataLogger.Init();
 UserDataLogger logger = new UserDataLogger();
 
-string[] statuses = new string[]()
+string[] statuses = new string[]
 {
     "Genshin pulling for Cresclent",
-    "I am a Sheepy boi! I am a Sheepy Boi! a Sheepy Sheepy Sheepy Sheepy boy!",
-    "oooh mysterious!" //god damn lemme add some more on my school laptop or sum
-}
+    "I am a Sheepy Boi! I am a Sheepy Boi! I am a Sheepy Sheepy Sheepy Sheepy Boi!", //please someone get the reference dont make me feel old
+    "oooh mysterious!", //god damn lemme add some more on my school laptop or sum
+    "HI!",
+    "MINECRAFT",
+    "Genshin Impact",
+    "Honkai: Star Rail",
+    "I dunno. Ask Cresclent!",
+    "Watching youtube!",
+    "Streaming!",
+    "Screaming!",
+    ""
+};
 
-string gameStatus = statuses[random.Next(0, statuses.Count)]; //I'm guessing this is count I did this on my phone!
+string gameStatus = statuses[random.Next(0, statuses.Length)]; //I'm guessing this is count I did this on my phone!-- i was wrong it was Length
 
 var cooldowns = new Dictionary<ulong, DateTime>();
 
@@ -202,7 +211,6 @@ void UpdateSuggestion(int id, object data)
     File.WriteAllText(filePath, json);
 }
 
-// ===== VOTESERVICE REGISTRATION - MUST BE BEFORE host.Build() =====
 builder.Services.AddSingleton<VoteService>(provider =>
 {
     var client = provider.GetRequiredService<GatewayClient>();
@@ -210,7 +218,6 @@ builder.Services.AddSingleton<VoteService>(provider =>
     return new VoteService(client, rest, fiveStarCharacters, banner);
 });
 
-// ===== BUILD THE HOST =====
 var host = builder.Build();
 
 host.AddSlashCommand("pity", "Check your current pity count and stats", (ApplicationCommandContext context) =>

@@ -7,12 +7,29 @@ namespace discord_bot.Tools
 {
     internal class Write
     {
-        public void WriteLine(string message)
+        public void WriteLine(string message, int type = 1)
         {
-            string info = "info";
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.Write(info);
+            string prefix = "";
+            if (type < 0)
+            {
+                type = 1;
+            }
+            if (type == 0) //debug
+            {
+                prefix = "debug";
+            }
+            if (type == 1) //info
+            {
+                prefix = "info";
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+            }
+            else if (type == 2) //WARN
+            {
+                prefix = "WARN";
+            }
+            Console.Write(prefix);
             Console.ForegroundColor = ConsoleColor.White;
+            Console.BackgroundColor = ConsoleColor.Black;
             Console.WriteLine(": " + message);
         }
     }
