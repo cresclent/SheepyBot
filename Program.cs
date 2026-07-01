@@ -1,4 +1,5 @@
-﻿using discord_bot.Helpers;
+﻿// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
 using discord_bot.Tools;
 using discord_bot.SmallDat;
 using discord_bot.userdataModels;

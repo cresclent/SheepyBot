@@ -1,4 +1,7 @@
-﻿@page
+﻿@* Copyright (c) 2026 Cresclent. All rights reserved.
+This Discord bot code is view-only. Hosting or running this bot is strictly prohibited! *@
+
+@page
 @model discord_bot.Pages.IndexModel
 
 <!DOCTYPE html>
@@ -77,18 +80,11 @@
                     <form method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="action" value="CleanupServers" />
-                        <p style="font-size: 14px; color: #94a3b8;">Cleanup data for servers the bot has been removed from.</p>
+                        <p style="font-size: 14px; color: #94a3b8;">Check and cleanup data for servers the bot has been removed from.</p>
                         <button type="submit" class="secondary">🧹 Cleanup</button>
                     </form>
                 </div>
             </div>
-
-            <div class="col">
-    <div class="card card-no-margin">
-        <h4>📊 Guild Data</h4>
-        <p style="font-size: 14px; color: #94a3b8;">View command data for specific guilds.</p>
-<a href="/GuildData" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">📊 Guild Data</a>    </div>
-</div>
 
             <div class="col">
                 <div class="card card-no-margin">
@@ -115,20 +111,34 @@
                     <a href="/ViewAll/Globals" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">🌍 View All</a>
                 </div>
             </div>
-<div class="col">
-    <div class="card card-no-margin">
-        <h4>💡 View Suggestions</h4>
-        <p style="font-size: 14px; color: #94a3b8;">View and manage all bot suggestions. as you should!</p>
-        <a href="/Suggestions" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">💡 View Suggestions</a>
-    </div>
-</div>
-<div class="col">
-    <div class="card card-no-margin">
-        <h4>🛡️ Ignore List</h4>
-        <p style="font-size: 14px; color: #94a3b8;">Manage users who are ignored by the bot.</p>
-        <a href="/Ignore" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">🛡️ Manage Ignore List</a>
-    </div>
-</div>
+        </div>
+
+        <div class="row mt-20">
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>📊 Guild Data</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">View command data for specific guilds.</p>
+                    <a href="/GuildData" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">📊 Guild Data</a>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>💡 View Suggestions</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">View and manage all bot suggestions.</p>
+                    <a href="/Suggestions" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">💡 View Suggestions</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-20">
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>🛡️ Ignore List</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">Manage users who are ignored by the bot.</p>
+                    <a href="/Ignore" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">🛡️ Manage Ignore List</a>
+                </div>
+            </div>
         </div>
     </div>
 

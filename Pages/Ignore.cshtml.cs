@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+
 using discord_bot.userdataModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

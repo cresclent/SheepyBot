@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+
 using discord_bot.Services;
 using discord_bot.SmallDat;
 using discord_bot.userdataModels;
@@ -138,7 +141,6 @@ namespace discord_bot.Pages
             report.TotalCommands = allLogs.Sum(u => u.TotalCommands);
             report.TotalCommandUsers = allLogs.Select(u => u.UserId).Distinct().Count();
 
-            // Get top users with command counts and timestamps
             var topUsers = allLogs
                 .GroupBy(u => u.UserId)
                 .Select(g => new
@@ -154,7 +156,6 @@ namespace discord_bot.Pages
             var topUsersWithCommands = new List<TopUserWithCommands>();
             foreach (var user in topUsers)
             {
-                // Get all commands for this user with timestamps
                 var allUserCommands = allLogs
                     .Where(u => u.UserId == user.UserId)
                     .SelectMany(u => u.Guilds.Values.SelectMany(g => g.Channels.Values.SelectMany(c => c.Commands)))
@@ -191,6 +192,7 @@ namespace discord_bot.Pages
             }
 
             report.TopUsersWithCommands = topUsersWithCommands;
+
             AllDataReport = report;
         }
 

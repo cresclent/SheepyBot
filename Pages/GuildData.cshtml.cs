@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Cresclent. All rights reserved.
+// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+
 using discord_bot.SmallDat;
 using discord_bot.userdataModels;
 using Microsoft.AspNetCore.Mvc;
@@ -96,7 +99,6 @@ namespace discord_bot.Pages
                 .Take(10)
                 .ToList();
 
-            // Build command counts with timestamps
             var topUsers = new List<TopUserData>();
             foreach (var user in userGroups)
             {
@@ -130,8 +132,6 @@ namespace discord_bot.Pages
             }
 
             report.TopUsers = topUsers;
-
-            // Channel stats (keeping as is)
             var channelStats = new Dictionary<string, int>();
             foreach (var user in guildLogs)
             {
