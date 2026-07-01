@@ -1,0 +1,181 @@
+﻿@page
+@model discord_bot.Pages.IndexModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sheepy Bot Control Panel</title>
+    <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body>
+    <h1>🐑 Sheepy Bot Control Panel</h1>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-dot"></span>
+            <strong>Bot Status:</strong> Online
+        </div>
+        <div class="status-item">
+            <strong>Current Banner:</strong>
+            <span class="banner-display">@Model.CurrentBanner</span>
+        </div>
+        <div class="status-item">
+            <strong>Bot Owner:</strong> <span>@Model.BotOwnerId</span>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-error")">
+            @Model.Message
+        </div>
+    }
+
+    <div class="card">
+        <h3>🔧 Bot Owner Commands</h3>
+        <p class="text-muted">These commands require bot owner permissions</p>
+
+        <div class="row">
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>🔄 Reset Banner</h4>
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="action" value="ResetBanner" />
+                        <p style="font-size: 14px; color: #94a3b8;">Reset the banner to a random 5-star character.</p>
+                        <button type="submit" class="warning">🔄 Reset Banner</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>📢 Global Announcement</h4>
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="action" value="GlobalAnnounce" />
+                        <div class="form-group">
+                            <label for="announceMessage">Message</label>
+                            <textarea id="announceMessage" name="announcement" placeholder="Enter global announcement" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="pingRole">
+                                <input type="checkbox" id="pingRole" name="ping" value="true" />
+                                Ping configured role
+                            </label>
+                        </div>
+                        <button type="submit" class="success">📢 Send Announcement</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-20">
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>🧹 Cleanup Removed Servers</h4>
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="action" value="CleanupServers" />
+                        <p style="font-size: 14px; color: #94a3b8;">Check and cleanup data for servers the bot has been removed from.</p>
+                        <button type="submit" class="secondary">🧹 Cleanup</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>📊 All Vote Channels</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">View all configured vote channels across all servers.</p>
+                    <a href="/ViewAll/Votes" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">📊 View All</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-20">
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>📢 All Startup Channels</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">View all configured startup announcement channels.</p>
+                    <a href="/ViewAll/Startups" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">📢 View All</a>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4>🌍 All Global Channels</h4>
+                    <p style="font-size: 14px; color: #94a3b8;">View all configured global announcement channels.</p>
+                    <a href="/ViewAll/Globals" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">🌍 View All</a>
+                </div>
+            </div>
+<div class="col">
+    <div class="card card-no-margin">
+        <h4>💡 View Suggestions</h4>
+        <p style="font-size: 14px; color: #94a3b8;">View and manage all bot suggestions. as you should!</p>
+        <a href="/Suggestions" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">💡 View Suggestions</a>
+    </div>
+</div>
+<div class="col">
+    <div class="card card-no-margin">
+        <h4>🛡️ Ignore List</h4>
+        <p style="font-size: 14px; color: #94a3b8;">Manage users who are ignored by the bot.</p>
+        <a href="/Ignore" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">🛡️ Manage Ignore List</a>
+    </div>
+</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 Available Slash Commands</h3>
+        <div class="command-grid">
+            <div class="command-item">/pity</div>
+            <div class="command-item">/inventory</div>
+            <div class="command-item">/banner</div>
+            <div class="command-item">/pull</div>
+            <div class="command-item">/help</div>
+            <div class="command-item">/coinflip</div>
+            <div class="command-item">/bannerreset</div>
+            <div class="command-item">/votebanner</div>
+            <div class="command-item">/votehistory</div>
+            <div class="command-item">/setvotechannel</div>
+            <div class="command-item">/disablevotechannel</div>
+            <div class="command-item">/votechannelstatus</div>
+            <div class="command-item">/allvotechannels</div>
+            <div class="command-item">/suggest</div>
+            <div class="command-item">/approvesuggestion</div>
+            <div class="command-item">/denysuggestion</div>
+            <div class="command-item">/viewsuggestion</div>
+            <div class="command-item">/listsuggestions</div>
+            <div class="command-item">/guildleaderboard</div>
+            <div class="command-item">/totalleaderboard</div>
+            <div class="command-item">/guilddata</div>
+            <div class="command-item">/alldata</div>
+            <div class="command-item">/setstartupchannel</div>
+            <div class="command-item">/disablestartup</div>
+            <div class="command-item">/startupstatus</div>
+            <div class="command-item">/allstartupchannels</div>
+            <div class="command-item">/setglobalchannel</div>
+            <div class="command-item">/globalannounce</div>
+            <div class="command-item">/disableglobal</div>
+            <div class="command-item">/globalstatus</div>
+            <div class="command-item">/allglobalchannels</div>
+            <div class="command-item">/ignoreuser</div>
+            <div class="command-item">/unignoreuser</div>
+            <div class="command-item">/listignored</div>
+            <div class="command-item">/cleanupremovedservers</div>
+            <div class="command-item">/github</div>
+            <div class="command-item">/terms</div>
+            <div class="command-item">/privacy</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 Quick Tips</h3>
+        <ul>
+            <li><strong>Bot Owner ID:</strong> 1157243448093573120</li>
+            <li>All bot owner commands are restricted to the bot owner</li>
+            <li>Find IDs by enabling Developer Mode in Discord → Settings → Advanced</li>
+        </ul>
+    </div>
+</body>
+</html>

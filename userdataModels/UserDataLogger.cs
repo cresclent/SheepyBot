@@ -188,7 +188,7 @@ namespace discord_bot.userdataModels
             }
         }
 
-        public static void Init(string customDirectory)
+        public static void Init(string customDirectory) // dunno if im gonna use this or not in the future
         {
             try
             {
@@ -262,7 +262,7 @@ namespace discord_bot.userdataModels
             return _isInitialized;
         }
 
-        public void Logger(ApplicationCommandContext context, string commandName)
+        public static void Logger(ApplicationCommandContext context, string commandName)
         {
             if (!_isInitialized)
             {

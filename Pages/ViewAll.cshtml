@@ -1,0 +1,319 @@
+﻿@page "{viewtype?}"
+@model discord_bot.Pages.ViewAllModel
+@{
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sheepy Bot - View All</title>
+    <link rel="stylesheet" href="/css/site.css" />
+    <style>
+        .view-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .view-nav a {
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .view-nav a:hover {
+            background: rgba(129, 140, 248, 0.15);
+            border-color: var(--primary);
+        }
+        .view-nav a.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--card-bg);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        td {
+            color: var(--text);
+        }
+        tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+        .page-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .back-link {
+            display: inline-block;
+            padding: 10px 24px;
+            background: var(--primary);
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .section-title {
+            margin-top: 30px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        .section-title:first-of-type {
+            margin-top: 0;
+        }
+        .text-muted {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <h1>📊 View All Data</h1>
+        <a href="/" class="back-link">← Back to Control Panel</a>
+    </div>
+
+    <div class="view-nav">
+        <a href="/ViewAll/Votes" class="@(Model.ViewType == "Votes" ? "active" : "")">📊 Votes</a>
+        <a href="/ViewAll/Startups" class="@(Model.ViewType == "Startups" ? "active" : "")">📢 Startup Channels</a>
+        <a href="/ViewAll/Globals" class="@(Model.ViewType == "Globals" ? "active" : "")">🌍 Global Channels</a>
+        <a href="/ViewAll/AllData" class="@(Model.ViewType == "AllData" ? "active" : "")">📊 All Data</a>
+    </div>
+
+    @if (Model.ViewType == string.Empty)
+    {
+        <div class="empty-state">
+            <div class="icon">👆</div>
+            <p>Select a view from the tabs above</p>
+        </div>
+    }
+    else if (Model.ViewType == "Votes")
+    {
+        <h2>Votes</h2>
+        if (Model.Votes.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vote ID</th>
+                        <th>User ID</th>
+                        <th>Vote Value</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vote in Model.Votes)
+                    {
+                        <tr>
+                            <td>@vote.VoteId</td>
+                            <td>@vote.UserId</td>
+                            <td>@vote.VoteValue</td>
+                            <td>@vote.Timestamp</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No votes found</p>
+            </div>
+        }
+    }
+    else if (Model.ViewType == "Startups")
+    {
+        <h2>Startup Channels</h2>
+        if (Model.StartupChannels.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Guild ID</th>
+                        <th>Guild Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var channel in Model.StartupChannels)
+                    {
+                        <tr>
+                            <td>@channel.ChannelId</td>
+                            <td>@channel.ChannelName</td>
+                            <td>Configured</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No startup channels found</p>
+            </div>
+        }
+    }
+    else if (Model.ViewType == "Globals")
+    {
+        <h2>Global Channels</h2>
+        if (Model.GlobalChannels.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Guild ID</th>
+                        <th>Guild Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var channel in Model.GlobalChannels)
+                    {
+                        <tr>
+                            <td>@channel.ChannelId</td>
+                            <td>@channel.ChannelName</td>
+                            <td>Configured</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No global channels found</p>
+            </div>
+        }
+    }
+    else if (Model.ViewType == "AllData")
+    {
+        <h2 class="section-title">📊 All Data</h2>
+
+        <h3 class="section-title">Votes</h3>
+        if (Model.Votes.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vote ID</th>
+                        <th>User ID</th>
+                        <th>Vote Value</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vote in Model.Votes)
+                    {
+                        <tr>
+                            <td>@vote.VoteId</td>
+                            <td>@vote.UserId</td>
+                            <td>@vote.VoteValue</td>
+                            <td>@vote.Timestamp</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No votes found</p>
+        }
+
+        <h3 class="section-title">Startup Channels</h3>
+        if (Model.StartupChannels.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Guild ID</th>
+                        <th>Guild Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var channel in Model.StartupChannels)
+                    {
+                        <tr>
+                            <td>@channel.ChannelId</td>
+                            <td>@channel.ChannelName</td>
+                            <td>Configured</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No startup channels found</p>
+        }
+
+        <h3 class="section-title">Global Channels</h3>
+        if (Model.GlobalChannels.Count > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Guild ID</th>
+                        <th>Guild Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var channel in Model.GlobalChannels)
+                    {
+                        <tr>
+                            <td>@channel.ChannelId</td>
+                            <td>@channel.ChannelName</td>
+                            <td>Configured</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No global channels found</p>
+        }
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="icon">❌</div>
+            <p>Invalid view type: @Model.ViewType</p>
+        </div>
+    }
+</body>
+</html>

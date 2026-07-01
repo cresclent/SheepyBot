@@ -1,9 +1,8 @@
-﻿// Copyright (c) 2026 Cresclent. All rights reserved.
-// This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
-using discord_bot.Helpers;
+﻿using discord_bot.Helpers;
 using discord_bot.Tools;
 using discord_bot.SmallDat;
 using discord_bot.userdataModels;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -20,11 +19,13 @@ using System.Text;
 using System.Text.Json;
 using discord_bot.Services;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
+
+builder.Services.AddRazorPages();
 
 var token = builder.Configuration["Discord:Token"]
             ?? Environment.GetEnvironmentVariable("DISCORD_TOKEN");
@@ -43,6 +44,18 @@ builder.Services.Configure<GatewayClientOptions>(options =>
 builder.Services
     .AddDiscordGateway()
     .AddApplicationCommands();
+
+builder.Services.AddSingleton<StartupAnnouncement>(provider =>
+{
+    var rest = provider.GetRequiredService<RestClient>();
+    return new StartupAnnouncement(rest);
+});
+
+builder.Services.AddSingleton<GlobalAnnouncement>(provider =>
+{
+    var rest = provider.GetRequiredService<RestClient>();
+    return new GlobalAnnouncement(rest);
+});
 
 string[] fiveStarCharacters = new[]
 {
@@ -108,13 +121,12 @@ Random random = new Random();
 string banner = fiveStarCharacters[random.Next(fiveStarCharacters.Length)];
 
 UserDataLogger.Init();
-UserDataLogger logger = new UserDataLogger();
 
 string[] statuses = new string[]
 {
     "Genshin pulling for Cresclent",
-    "I am a Sheepy Boi! I am a Sheepy Boi! I am a Sheepy Sheepy Sheepy Sheepy Boi!", //please someone get the reference dont make me feel old
-    "oooh mysterious!", //god damn lemme add some more on my school laptop or sum
+    "I am a Sheepy Boi! I am a Sheepy Boi! I am a Sheepy Sheepy Sheepy Sheepy Boi!",
+    "oooh mysterious!",
     "HI!",
     "MINECRAFT",
     "Genshin Impact",
@@ -126,7 +138,7 @@ string[] statuses = new string[]
     ""
 };
 
-string gameStatus = statuses[random.Next(0, statuses.Length)]; //I'm guessing this is count I did this on my phone!-- i was wrong it was Length
+string gameStatus = statuses[random.Next(0, statuses.Length)];
 
 var cooldowns = new Dictionary<ulong, DateTime>();
 
@@ -167,7 +179,7 @@ int GetNextSuggestionId()
 void SaveSuggestion(object data)
 {
     string dir = GetSuggestionsDirectory();
-    var json = System.Text.Json.JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+    var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
     var id = (int)data.GetType().GetProperty("Id").GetValue(data);
     string filePath = Path.Combine(dir, $"suggestion-{id}.json");
     File.WriteAllText(filePath, json);
@@ -213,19 +225,26 @@ void UpdateSuggestion(int id, object data)
 
 builder.Services.AddSingleton<VoteService>(provider =>
 {
-    var client = provider.GetRequiredService<GatewayClient>();
+    var gatewayClient = provider.GetRequiredService<GatewayClient>();
     var rest = provider.GetRequiredService<RestClient>();
-    return new VoteService(client, rest, fiveStarCharacters, banner);
+    return new VoteService(gatewayClient, rest, fiveStarCharacters, banner);
 });
 
-var host = builder.Build();
+var app = builder.Build();
 
-host.AddSlashCommand("pity", "Check your current pity count and stats", (ApplicationCommandContext context) =>
+app.UseStaticFiles();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+app.AddSlashCommand("pity", "Check your current pity count and stats", (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var data = dataManager.GetOrCreateUserData(userId);
 
-    logger.Logger(context, "pity");
+    UserDataLogger.Logger(context, "pity");
 
     return $"**Your Stats:**\n" +
            $"Pity: **{data.Pity}/90**\n" +
@@ -237,12 +256,12 @@ host.AddSlashCommand("pity", "Check your current pity count and stats", (Applica
            $"{GetStars(3)} 3-Stars: **{data.ThreeStarCount}**";
 });
 
-host.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandContext context) =>
+app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var data = dataManager.GetOrCreateUserData(userId);
 
-    logger.Logger(context, "inventory");
+    UserDataLogger.Logger(context, "inventory");
 
     if (data.Inventory.Count == 0)
     {
@@ -302,10 +321,10 @@ host.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandCon
     return response;
 });
 
-host.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandContext context) =>
+app.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "banner");
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    UserDataLogger.Logger(context, "banner");
+    var voteService = app.Services.GetRequiredService<VoteService>();
     var currentBanner = voteService.GetCurrentBanner();
 
     return $"📌 **Current Banner:** {currentBanner}\n\n" +
@@ -313,9 +332,9 @@ host.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandCo
            $"Use `/pull` to wish on this banner!";
 });
 
-host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "help");
+    UserDataLogger.Logger(context, "help");
 
     var helpMessage = $"# 🐑 **Sheepy Bot Help Menu**\n\n" +
            $"## 📋 **General Commands**\n" +
@@ -332,25 +351,20 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"  • If no channel is provided, uses the current channel\n" +
            $"`/disablevotechannel` - Disable banner votes for this server (Admin only)\n" +
            $"`/votechannelstatus` - Displays vote channel status for this server (Admin only)\n" +
-           $"`/allvotechannels` - View all configured vote channels (Bot owner only)\n\n" +
            $"## 📢 **Announcement Commands**\n" +
            $"`/setstartupchannel [channel] [role]` - Sets the startup channel for this server (Admin only)\n" +
            $"  • If no channel is provided, uses the current channel\n" +
            $"`/disablestartup` - Disable startup announcements for this server (Admin only)\n" +
            $"`/startupstatus` - Displays startup announcement status for this server (Admin only)\n" +
-           $"`/allstartupchannels` - View all configured startup channels (Bot owner only)\n" +
            $"`/setglobalchannel [channel] [role]` - Sets the global announcement channel for this server (Admin only)\n" +
            $"  • If no channel is provided, uses the current channel\n" +
            $"`/disableglobal` - Disable global announcements for this server (Admin only)\n" +
            $"`/globalstatus` - Displays global announcement status for this server (Admin only)\n" +
-           $"`/allglobalchannels` - View all configured global announcement channels (Bot owner only)\n" +
            $"`/globalannounce <message>` - Send a global announcement to all configured channels (Bot owner only)\n\n" +
            $"## 💡 **Bot Suggestion Commands**\n" +
            $"`/suggest <suggestion>` - Suggest a new feature for the bot\n" +
            $"`/viewsuggestion <id>` - View a specific suggestion by ID\n" +
-           $"`/listsuggestions` - List all bot suggestions\n" +
-           $"`/approvesuggestion <id>` - Approve a suggestion (Bot owner only)\n" +
-           $"`/denysuggestion <id> [reason]` - Deny a suggestion (Bot owner only)\n\n" +
+           $"`/listsuggestions` - List all bot suggestions\n\n" +
            $"## 🏆 **Leaderboards**\n" +
            $"`/guildleaderboard` - Shows top command users in **this guild** (This Month)\n" +
            $"  • See who's most active in your server\n" +
@@ -373,12 +387,6 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
            $"  • Command type distribution\n" +
            $"  • Missing/empty file report\n" +
            $"  • Much more overseeable than checking individual log files!\n\n" +
-           $"## 🛡️ **Ignore List Commands**\n" +
-           $"`/ignoreuser <user>` - Add a user to the ignore list (Admin only, specific channel)\n" +
-           $"`/unignoreuser <user>` - Remove a user from the ignore list (Admin only, specific channel)\n" +
-           $"`/listignored` - List all ignored users (Admin only, specific channel)\n\n" +
-           $"## 🛠️ **Server Management Commands**\n" +
-           $"`/cleanupremovedservers` - Check and cleanup data for removed servers (Bot owner only)\n\n" +
            $"## ℹ️ **Info**\n" +
            $"`/github` - Link to the open source code\n" +
            $"`/privacy` - The privacy policy\n" +
@@ -403,23 +411,23 @@ host.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCon
     return firstMessage;
 });
 
-host.AddSlashCommand("coinflip", "Simple Coinflip Command", (ApplicationCommandContext context) =>
+app.AddSlashCommand("coinflip", "Simple Coinflip Command", (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "coinflip");
+    UserDataLogger.Logger(context, "coinflip");
 
     string coinout = random.Next(0, 2) == 0 ? "Heads" : "Tails";
     return $"# Your coin is: {coinout}";
 });
 
-host.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by cresclent", (ApplicationCommandContext context) =>
+app.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by cresclent", (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
 
-    logger.Logger(context, "bannerreset");
+    UserDataLogger.Logger(context, "bannerreset");
 
     if (userId == 1157243448093573120)
     {
-        var voteService = host.Services.GetRequiredService<VoteService>();
+        var voteService = app.Services.GetRequiredService<VoteService>();
         voteService.RerollBanner();
         var currentBanner = voteService.GetCurrentBanner();
         return $"# Banner is being rerolled to:\n{currentBanner}";
@@ -430,13 +438,13 @@ host.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by cresc
     }
 });
 
-host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    var voteService = app.Services.GetRequiredService<VoteService>();
     string currentBanner = voteService.GetCurrentBanner();
 
-    logger.Logger(context, "pull");
+    UserDataLogger.Logger(context, "pull");
 
     if (cooldowns.TryGetValue(userId, out var cooldownEnd))
     {
@@ -549,19 +557,20 @@ host.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (A
     return response;
 });
 
-host.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (ApplicationCommandContext context) =>
 {
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    var voteService = app.Services.GetRequiredService<VoteService>();
 
-    logger.Logger(context, "votebanner");
+    UserDataLogger.Logger(context, "votebanner");
 
     var result = await voteService.StartRerollVote(context.Interaction as SlashCommandInteraction);
     return result;
 });
-host.AddSlashCommand("votehistory", "View recent banner vote history", async (ApplicationCommandContext context) =>
+
+app.AddSlashCommand("votehistory", "View recent banner vote history", async (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "votehistory");
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    UserDataLogger.Logger(context, "votehistory");
+    var voteService = app.Services.GetRequiredService<VoteService>();
     var history = voteService.GetVoteHistory(10);
 
     if (history.Count == 0)
@@ -580,14 +589,14 @@ host.AddSlashCommand("votehistory", "View recent banner vote history", async (Ap
     return response;
 });
 
-host.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin only)", async (ApplicationCommandContext context,
+app.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin only)", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "channel", Description = "The channel to send votes to (optional)")] Channel? channel = null,
     [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
 
-    logger.Logger(context, "setvotechannel");
+    UserDataLogger.Logger(context, "setvotechannel");
 
     if (context.Guild == null)
     {
@@ -645,19 +654,19 @@ host.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin 
         }
     }
 
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    var voteService = app.Services.GetRequiredService<VoteService>();
     voteService.SetVoteChannel(guildId, targetChannelId, targetRoleId);
 
     string roleText = targetRoleId.HasValue ? $" with role <@&{targetRoleId}>" : " with no role ping";
     return $"✅ Vote channel has been set to <#{targetChannelId}>{roleText} for this server!";
 });
 
-host.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild (Admin only)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild (Admin only)", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
 
-    logger.Logger(context, "disablevotechannel");
+    UserDataLogger.Logger(context, "disablevotechannel");
 
     if (context.Guild == null)
     {
@@ -676,50 +685,342 @@ host.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild 
         return "You need Administrator permissions to use this command!";
     }
 
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    var voteService = app.Services.GetRequiredService<VoteService>();
     voteService.DisableVoteChannel(guildId);
 
     return "✅ Vote channel has been disabled for this server.";
 });
 
-host.AddSlashCommand("votechannelstatus", "Check the status of vote channel for this guild", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("votechannelstatus", "Check the status of vote channel for this guild", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
 
-    logger.Logger(context, "votechannelstatus");
+    UserDataLogger.Logger(context, "votechannelstatus");
 
     if (context.Guild == null)
     {
         return "This command can only be used in a server!";
     }
 
-    var voteService = host.Services.GetRequiredService<VoteService>();
+    var voteService = app.Services.GetRequiredService<VoteService>();
     return voteService.GetVoteChannelStatus(guildId);
 });
 
-host.AddSlashCommand("allvotechannels", "View all configured vote channels (Bot owner only)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announcements (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
+    [SlashCommandParameter(Name = "role", Description = "the role to ping.. not putting anything in will make it not ping anything")] Role? role = null) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "setstartupchannel");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    ulong targetChannelId;
+    if (channel == null)
+    {
+        targetChannelId = context.Channel.Id;
+    }
+    else
+    {
+        targetChannelId = channel.Id;
+    }
+
+    try
+    {
+        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
+        if (guildChannel.Value == null)
+        {
+            return "That channel does not exist in this server!";
+        }
+
+        if (guildChannel.Value is not TextGuildChannel)
+        {
+            return "Please select a text channel!";
+        }
+    }
+    catch
+    {
+        return "Could not verify the channel!";
+    }
+
+    ulong? targetRoleId = null;
+    if (role != null)
+    {
+        targetRoleId = role.Id;
+        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
+        if (guildRole.Value == null)
+        {
+            return "That role does not exist in this server!";
+        }
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var startupAnnouncement = new StartupAnnouncement(restClient);
+    startupAnnouncement.SetAnnouncementChannel(guildId, targetChannelId, targetRoleId);
+
+    return $"Startup announcements have been set to <#{targetChannelId}> for this server!";
+});
+
+app.AddSlashCommand("disablestartup", "Disable bot startup announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "disablestartup");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var startupAnnouncement = new StartupAnnouncement(restClient);
+    startupAnnouncement.DisableAnnouncements(guildId);
+    return "Startup announcements have been disabled for this server.";
+});
+
+app.AddSlashCommand("startupstatus", "Check the status of startup announcements for this guild", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "startupstatus");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var startupAnnouncement = new StartupAnnouncement(restClient);
+    var info = startupAnnouncement.GetConfigInfo(guildId);
+    var guildName = context.Guild.Name;
+
+    return $"**Startup Announcement Status**\n\n" +
+           $"**Guild:** {guildName}\n" +
+           $"{info}";
+});
+
+app.AddSlashCommand("setglobalchannel", "Set the channel for global announcements (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
+    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "setglobalchannel");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    ulong targetChannelId;
+    if (channel == null)
+    {
+        targetChannelId = context.Channel.Id;
+    }
+    else
+    {
+        targetChannelId = channel.Id;
+    }
+
+    try
+    {
+        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
+        if (guildChannel.Value == null)
+        {
+            return "That channel does not exist in this server!";
+        }
+
+        if (guildChannel.Value is not TextGuildChannel)
+        {
+            return "Please select a text channel!";
+        }
+    }
+    catch
+    {
+        return "Could not verify the channel!";
+    }
+
+    ulong? targetRoleId = null;
+    if (role != null)
+    {
+        targetRoleId = role.Id;
+        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
+        if (guildRole.Value == null)
+        {
+            return "That role does not exist in this server!";
+        }
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    globalAnnouncement.SetGlobalChannel(guildId, targetChannelId, targetRoleId);
+
+    if (channel == null)
+    {
+        return $"Global announcements have been set to the current channel <#{targetChannelId}> for this server!";
+    }
+    else
+    {
+        return $"Global announcements have been set to <#{targetChannelId}> for this server!";
+    }
+});
+
+app.AddSlashCommand("disableglobal", "Disable global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "disableglobal");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    globalAnnouncement.DisableGlobalAnnouncements(guildId);
+
+    return "Global announcements have been disabled for this server.";
+});
+
+app.AddSlashCommand("globalstatus", "Check the status of global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "globalstatus");
+
+    if (context.Guild == null)
+    {
+        return "This command can only be used in a server!";
+    }
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+    {
+        return "Could not find your user in this guild!";
+    }
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+    {
+        return "You need Administrator permissions to use this command!";
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+    var info = globalAnnouncement.GetGlobalConfigInfo(guildId);
+    var guildName = context.Guild.Name;
+
+    return $"**Global Announcement Status**\n\n" +
+           $"**Guild:** {guildName}\n" +
+           $"{info}";
+});
+
+app.AddSlashCommand("globalannounce", "Send a global announcement to all configured channels (Bot owner only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "message", Description = "The announcement message")] string message,
+    [SlashCommandParameter(Name = "ping", Description = "Whether to ping the configured role (true/false)")] bool? ping = null) =>
 {
     var userId = context.User.Id;
 
-    logger.Logger(context, "allvotechannels");
+    UserDataLogger.Logger(context, "globalannounce");
 
     if (userId != 1157243448093573120)
     {
-        return "Only the bot owner can use this command!";
+        return "Only the bot owner can send global announcements!";
     }
 
-    var voteService = host.Services.GetRequiredService<VoteService>();
-    return voteService.GetAllVoteChannels();
+    if (string.IsNullOrWhiteSpace(message))
+    {
+        return "Please provide a message!";
+    }
+
+    var restClient = app.Services.GetRequiredService<RestClient>();
+    var globalAnnouncement = new GlobalAnnouncement(restClient);
+
+    bool shouldPing = ping ?? false;
+    await globalAnnouncement.SendGlobalAnnouncementAsync(message, shouldPing);
+
+    return $"Global announcement sent successfully to all configured channels! (Ping: {(shouldPing ? "Enabled" : "Disabled")})";
 });
 
-host.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (ApplicationCommandContext context,
+app.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "suggestion", Description = "Your suggestion for the bot")] string suggestion) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
 
-    logger.Logger(context, "suggest");
+    UserDataLogger.Logger(context, "suggest");
 
     if (string.IsNullOrWhiteSpace(suggestion))
     {
@@ -738,7 +1039,7 @@ host.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (Appl
 
     try
     {
-        var restClient = host.Services.GetRequiredService<RestClient>();
+        var restClient = app.Services.GetRequiredService<RestClient>();
         var channel = await restClient.GetChannelAsync(1517986948503834836) as TextGuildChannel;
 
         if (channel == null)
@@ -779,173 +1080,10 @@ host.AddSlashCommand("suggest", "Suggest a new feature for the bot", async (Appl
     }
 });
 
-host.AddSlashCommand("approvesuggestion", "Approve a bot suggestion (Bot owner only)", async (ApplicationCommandContext context,
+app.AddSlashCommand("viewsuggestion", "View a specific suggestion by ID", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "id", Description = "Suggestion ID")] int id) =>
 {
-    var userId = context.User.Id;
-
-    logger.Logger(context, "approvesuggestion");
-
-    if (userId != 1157243448093573120)
-    {
-        return "❌ Only the bot owner can approve suggestions!";
-    }
-
-    try
-    {
-        var suggestionData = LoadSuggestion(id);
-        if (suggestionData == null)
-        {
-            return $"❌ Could not find suggestion #{id}!";
-        }
-
-        ulong messageId = suggestionData.Value.GetProperty("MessageId").GetUInt64();
-        ulong channelId = suggestionData.Value.GetProperty("ChannelId").GetUInt64();
-        ulong guildId = suggestionData.Value.GetProperty("GuildId").GetUInt64();
-
-        RestMessage? message = null;
-
-        if (guildId != 0 && context.Guild != null)
-        {
-            var channel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == channelId).Value as TextGuildChannel;
-            if (channel != null)
-            {
-                try { message = await channel.GetMessageAsync(messageId); } catch { }
-            }
-        }
-
-        if (message == null)
-        {
-            var restClient = host.Services.GetRequiredService<RestClient>();
-            try
-            {
-                var dmChannel = await restClient.GetDMChannelAsync(channelId);
-                if (dmChannel != null)
-                {
-                    message = await dmChannel.GetMessageAsync(messageId);
-                }
-            }
-            catch { }
-        }
-
-        if (message != null)
-        {
-            var updatedContent = message.Content.Replace("⏳ Pending Review", "✅ Approved");
-            await message.ModifyAsync(options => options.Content = updatedContent);
-        }
-
-        var updatedData = new
-        {
-            Id = suggestionData.Value.GetProperty("Id").GetInt32(),
-            MessageId = suggestionData.Value.GetProperty("MessageId").GetUInt64(),
-            UserId = suggestionData.Value.GetProperty("UserId").GetUInt64(),
-            Username = suggestionData.Value.GetProperty("Username").GetString(),
-            GuildId = suggestionData.Value.GetProperty("GuildId").GetUInt64(),
-            GuildName = suggestionData.Value.GetProperty("GuildName").GetString(),
-            ChannelId = suggestionData.Value.GetProperty("ChannelId").GetUInt64(),
-            Suggestion = suggestionData.Value.GetProperty("Suggestion").GetString(),
-            Timestamp = suggestionData.Value.GetProperty("Timestamp").GetString(),
-            Status = "approved",
-            MessageUrl = suggestionData.Value.GetProperty("MessageUrl").GetString()
-        };
-
-        UpdateSuggestion(id, updatedData);
-
-        return $"✅ Bot Suggestion #{id} has been approved!";
-    }
-    catch (Exception ex)
-    {
-        return $"❌ Error: {ex.Message}";
-    }
-});
-
-host.AddSlashCommand("denysuggestion", "Deny a bot suggestion (Bot owner only)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "id", Description = "Suggestion ID")] int id,
-    [SlashCommandParameter(Name = "reason", Description = "Reason for denial (optional)")] string? reason = null) =>
-{
-    var userId = context.User.Id;
-
-    logger.Logger(context, "denysuggestion");
-
-    if (userId != 1157243448093573120)
-    {
-        return "❌ Only the bot owner can deny suggestions!";
-    }
-
-    try
-    {
-        var suggestionData = LoadSuggestion(id);
-        if (suggestionData == null)
-        {
-            return $"❌ Could not find suggestion #{id}!";
-        }
-
-        ulong messageId = suggestionData.Value.GetProperty("MessageId").GetUInt64();
-        ulong channelId = suggestionData.Value.GetProperty("ChannelId").GetUInt64();
-        ulong guildId = suggestionData.Value.GetProperty("GuildId").GetUInt64();
-
-        RestMessage? message = null;
-
-        if (guildId != 0 && context.Guild != null)
-        {
-            var channel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == channelId).Value as TextGuildChannel;
-            if (channel != null)
-            {
-                try { message = await channel.GetMessageAsync(messageId); } catch { }
-            }
-        }
-
-        if (message == null)
-        {
-            var restClient = host.Services.GetRequiredService<RestClient>();
-            try
-            {
-                var dmChannel = await restClient.GetDMChannelAsync(channelId);
-                if (dmChannel != null)
-                {
-                    message = await dmChannel.GetMessageAsync(messageId);
-                }
-            }
-            catch { }
-        }
-
-        if (message != null)
-        {
-            var statusText = string.IsNullOrEmpty(reason) ? "❌ Denied" : $"❌ Denied: {reason}";
-            var updatedContent = message.Content.Replace("⏳ Pending Review", statusText);
-            await message.ModifyAsync(options => options.Content = updatedContent);
-        }
-
-        var updatedData = new
-        {
-            Id = suggestionData.Value.GetProperty("Id").GetInt32(),
-            MessageId = suggestionData.Value.GetProperty("MessageId").GetUInt64(),
-            UserId = suggestionData.Value.GetProperty("UserId").GetUInt64(),
-            Username = suggestionData.Value.GetProperty("Username").GetString(),
-            GuildId = suggestionData.Value.GetProperty("GuildId").GetUInt64(),
-            GuildName = suggestionData.Value.GetProperty("GuildName").GetString(),
-            ChannelId = suggestionData.Value.GetProperty("ChannelId").GetUInt64(),
-            Suggestion = suggestionData.Value.GetProperty("Suggestion").GetString(),
-            Timestamp = suggestionData.Value.GetProperty("Timestamp").GetString(),
-            Status = "denied",
-            Reason = reason ?? "",
-            MessageUrl = suggestionData.Value.GetProperty("MessageUrl").GetString()
-        };
-
-        UpdateSuggestion(id, updatedData);
-
-        return $"❌ Bot Suggestion #{id} has been denied.";
-    }
-    catch (Exception ex)
-    {
-        return $"❌ Error: {ex.Message}";
-    }
-});
-
-host.AddSlashCommand("viewsuggestion", "View a specific suggestion by ID", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "id", Description = "Suggestion ID")] int id) =>
-{
-    logger.Logger(context, "viewsuggestion");
+    UserDataLogger.Logger(context, "viewsuggestion");
 
     try
     {
@@ -990,9 +1128,9 @@ host.AddSlashCommand("viewsuggestion", "View a specific suggestion by ID", async
     }
 });
 
-host.AddSlashCommand("listsuggestions", "List all bot suggestions", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("listsuggestions", "List all bot suggestions", async (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "listsuggestions");
+    UserDataLogger.Logger(context, "listsuggestions");
 
     try
     {
@@ -1058,7 +1196,7 @@ host.AddSlashCommand("listsuggestions", "List all bot suggestions", async (Appli
     }
 });
 
-host.AddSlashCommand("guildleaderboard", "Show top command users in this guild (This Month)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("guildleaderboard", "Show top command users in this guild (This Month)", async (ApplicationCommandContext context) =>
 {
     var guildId = context.Guild?.Id ?? 0;
 
@@ -1067,7 +1205,7 @@ host.AddSlashCommand("guildleaderboard", "Show top command users in this guild (
         return "❌ This command can only be used in a server!";
     }
 
-    logger.Logger(context, "guildleaderboard");
+    UserDataLogger.Logger(context, "guildleaderboard");
 
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
     var endDate = DateTime.Now.Date;
@@ -1160,9 +1298,9 @@ host.AddSlashCommand("guildleaderboard", "Show top command users in this guild (
     return response.ToString();
 });
 
-host.AddSlashCommand("totalleaderboard", "Show top command users across ALL guilds (This Month)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("totalleaderboard", "Show top command users across ALL guilds (This Month)", async (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "totalleaderboard");
+    UserDataLogger.Logger(context, "totalleaderboard");
 
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
     var endDate = DateTime.Now.Date;
@@ -1307,7 +1445,7 @@ host.AddSlashCommand("totalleaderboard", "Show top command users across ALL guil
     return response.ToString();
 });
 
-host.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin only)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin only)", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -1331,7 +1469,7 @@ host.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin o
         return "❌ This command can only be used in a server!";
     }
 
-    logger.Logger(context, "guilddata");
+    UserDataLogger.Logger(context, "guilddata");
 
     var startDate = new DateTime(2026, 6, 20);
     var endDate = DateTime.Now.Date;
@@ -1470,7 +1608,7 @@ host.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin o
     return response.ToString();
 });
 
-host.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific channel)", async (ApplicationCommandContext context) =>
+app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific channel)", async (ApplicationCommandContext context) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -1499,7 +1637,7 @@ host.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific cha
         return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
     }
 
-    logger.Logger(context, "alldata");
+    UserDataLogger.Logger(context, "alldata");
 
     var startDate = new DateTime(2026, 6, 20);
     var endDate = DateTime.Now.Date;
@@ -1722,569 +1860,21 @@ host.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific cha
     return response.ToString();
 });
 
-host.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announcements (Admin only)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
-    [SlashCommandParameter(Name = "role", Description = "the role to ping.. not putting anything in will make it not ping anything")] Role? role = null) =>
+app.AddSlashCommand("github", "The open source code!", (ApplicationCommandContext context) =>
 {
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "setstartupchannel");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    ulong targetChannelId;
-    if (channel == null)
-    {
-        targetChannelId = context.Channel.Id;
-    }
-    else
-    {
-        targetChannelId = channel.Id;
-    }
-
-    try
-    {
-        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
-        if (guildChannel.Value == null)
-        {
-            return "That channel does not exist in this server!";
-        }
-
-        if (guildChannel.Value is not TextGuildChannel)
-        {
-            return "Please select a text channel!";
-        }
-    }
-    catch
-    {
-        return "Could not verify the channel!";
-    }
-
-    ulong? targetRoleId = null;
-    if (role != null)
-    {
-        targetRoleId = role.Id;
-        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
-        if (guildRole.Value == null)
-        {
-            return "That role does not exist in this server!";
-        }
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
-    startupAnnouncement.SetAnnouncementChannel(guildId, targetChannelId, targetRoleId);
-
-    return $"Startup announcements have been set to <#{targetChannelId}> for this server!";
-});
-
-host.AddSlashCommand("disablestartup", "Disable bot startup announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "disablestartup");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
-    startupAnnouncement.DisableAnnouncements(guildId);
-    return "Startup announcements have been disabled for this server.";
-});
-
-host.AddSlashCommand("startupstatus", "Check the status of startup announcements for this guild", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "startupstatus");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
-    var info = startupAnnouncement.GetConfigInfo(guildId);
-    var guildName = context.Guild.Name;
-
-    return $"**Startup Announcement Status**\n\n" +
-           $"**Guild:** {guildName}\n" +
-           $"{info}";
-});
-
-host.AddSlashCommand("allstartupchannels", "View all configured startup announcement channels (Bot owner only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-
-    logger.Logger(context, "allstartupchannels");
-
-    if (userId != 1157243448093573120)
-    {
-        return "Only the bot owner can use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
-    return startupAnnouncement.GetAllConfigInfo();
-});
-
-host.AddSlashCommand("setglobalchannel", "Set the channel for global announcements (Admin only)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
-    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "setglobalchannel");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    ulong targetChannelId;
-    if (channel == null)
-    {
-        targetChannelId = context.Channel.Id;
-    }
-    else
-    {
-        targetChannelId = channel.Id;
-    }
-
-    try
-    {
-        var guildChannel = context.Guild.Channels.FirstOrDefault(c => c.Value.Id == targetChannelId);
-        if (guildChannel.Value == null)
-        {
-            return "That channel does not exist in this server!";
-        }
-
-        if (guildChannel.Value is not TextGuildChannel)
-        {
-            return "Please select a text channel!";
-        }
-    }
-    catch
-    {
-        return "Could not verify the channel!";
-    }
-
-    ulong? targetRoleId = null;
-    if (role != null)
-    {
-        targetRoleId = role.Id;
-        var guildRole = context.Guild.Roles.FirstOrDefault(r => r.Value.Id == targetRoleId);
-        if (guildRole.Value == null)
-        {
-            return "That role does not exist in this server!";
-        }
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var globalAnnouncement = new GlobalAnnouncement(restClient);
-    globalAnnouncement.SetGlobalChannel(guildId, targetChannelId, targetRoleId);
-
-    if (channel == null)
-    {
-        return $"Global announcements have been set to the current channel <#{targetChannelId}> for this server!";
-    }
-    else
-    {
-        return $"Global announcements have been set to <#{targetChannelId}> for this server!";
-    }
-});
-
-host.AddSlashCommand("globalannounce", "Send a global announcement to all configured channels (Bot owner only)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "message", Description = "The announcement message")] string message,
-    [SlashCommandParameter(Name = "ping", Description = "Whether to ping the configured role (true/false)")] bool? ping = null) =>
-{
-    var userId = context.User.Id;
-
-    logger.Logger(context, "globalannounce");
-
-    if (userId != 1157243448093573120)
-    {
-        return "Only the bot owner can send global announcements!";
-    }
-
-    if (string.IsNullOrWhiteSpace(message))
-    {
-        return "Please provide a message!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var globalAnnouncement = new GlobalAnnouncement(restClient);
-
-    bool shouldPing = ping ?? false;
-    await globalAnnouncement.SendGlobalAnnouncementAsync(message, shouldPing);
-
-    return $"Global announcement sent successfully to all configured channels! (Ping: {(shouldPing ? "Enabled" : "Disabled")})";
-});
-
-host.AddSlashCommand("disableglobal", "Disable global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "disableglobal");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var globalAnnouncement = new GlobalAnnouncement(restClient);
-    globalAnnouncement.DisableGlobalAnnouncements(guildId);
-
-    return "Global announcements have been disabled for this server.";
-});
-
-host.AddSlashCommand("globalstatus", "Check the status of global announcements for this guild (Admin only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-
-    logger.Logger(context, "globalstatus");
-
-    if (context.Guild == null)
-    {
-        return "This command can only be used in a server!";
-    }
-
-    var guildUser = await context.Guild.GetUserAsync(userId);
-    if (guildUser == null)
-    {
-        return "Could not find your user in this guild!";
-    }
-
-    var permissions = guildUser.GetPermissions(context.Guild);
-    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
-    {
-        return "You need Administrator permissions to use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var globalAnnouncement = new GlobalAnnouncement(restClient);
-    var info = globalAnnouncement.GetGlobalConfigInfo(guildId);
-    var guildName = context.Guild.Name;
-
-    return $"**Global Announcement Status**\n\n" +
-           $"**Guild:** {guildName}\n" +
-           $"{info}";
-});
-
-host.AddSlashCommand("allglobalchannels", "View all configured global announcement channels (Bot owner only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-
-    logger.Logger(context, "allglobalchannels");
-
-    if (userId != 1157243448093573120)
-    {
-        return "Only the bot owner can use this command!";
-    }
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    var globalAnnouncement = new GlobalAnnouncement(restClient);
-    return globalAnnouncement.GetAllGlobalConfigInfo();
-});
-
-host.AddSlashCommand("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "user", Description = "The user to ignore")] User user) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-    var channelId = context.Channel?.Id ?? 0;
-
-    if (guildId != 1495153417306247339 || channelId != 1495161155608645656)
-    {
-        return "❌ This command can only be used in Cresclent's server in the designated channel!";
-    }
-
-    bool isAdmin = false;
-    bool isOwner = userId == 1157243448093573120;
-
-    if (context.Guild != null)
-    {
-        var guildUser = await context.Guild.GetUserAsync(userId);
-        if (guildUser != null)
-        {
-            var permissions = guildUser.GetPermissions(context.Guild);
-            isAdmin = (permissions & Permissions.Administrator) == Permissions.Administrator;
-        }
-    }
-
-    if (!isAdmin && !isOwner)
-    {
-        return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
-    }
-
-    logger.Logger(context, "ignoreuser");
-
-    if (UserDataLogger.IsUserIgnored(user.Id))
-    {
-        return $"⚠️ User {user.Username} ({user.Id}) is already on the ignore list!";
-    }
-
-    UserDataLogger.AddIgnoredUser(user.Id);
-
-    return $"✅ User {user.Username} ({user.Id}) has been added to the ignore list.\n" +
-           $"Their commands will no longer be logged.";
-});
-
-host.AddSlashCommand("unignoreuser", "Remove a user from the ignore list (Admin only, specific channel)", async (ApplicationCommandContext context,
-    [SlashCommandParameter(Name = "user", Description = "The user to unignore")] User user) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-    var channelId = context.Channel?.Id ?? 0;
-
-    if (guildId != 1495153417306247339 || channelId != 1495161155608645656)
-    {
-        return "❌ This command can only be used in Cresclent's server in the designated channel!";
-    }
-
-    bool isAdmin = false;
-    bool isOwner = userId == 1157243448093573120;
-
-    if (context.Guild != null)
-    {
-        var guildUser = await context.Guild.GetUserAsync(userId);
-        if (guildUser != null)
-        {
-            var permissions = guildUser.GetPermissions(context.Guild);
-            isAdmin = (permissions & Permissions.Administrator) == Permissions.Administrator;
-        }
-    }
-
-    if (!isAdmin && !isOwner)
-    {
-        return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
-    }
-
-    logger.Logger(context, "unignoreuser");
-
-    if (!UserDataLogger.IsUserIgnored(user.Id))
-    {
-        return $"⚠️ User {user.Username} ({user.Id}) is not on the ignore list!";
-    }
-
-    UserDataLogger.RemoveIgnoredUser(user.Id);
-
-    return $"✅ User {user.Username} ({user.Id}) has been removed from the ignore list.\n" +
-           $"Their commands will now be logged again.";
-});
-
-host.AddSlashCommand("listignored", "List all ignored users (Admin only, specific channel)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-    var guildId = context.Guild?.Id ?? 0;
-    var channelId = context.Channel?.Id ?? 0;
-
-    if (guildId != 1495153417306247339 || channelId != 1495161155608645656)
-    {
-        return "❌ This command can only be used in Cresclent's server in the designated channel!";
-    }
-
-    bool isAdmin = false;
-    bool isOwner = userId == 1157243448093573120;
-
-    if (context.Guild != null)
-    {
-        var guildUser = await context.Guild.GetUserAsync(userId);
-        if (guildUser != null)
-        {
-            var permissions = guildUser.GetPermissions(context.Guild);
-            isAdmin = (permissions & Permissions.Administrator) == Permissions.Administrator;
-        }
-    }
-
-    if (!isAdmin && !isOwner)
-    {
-        return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
-    }
-
-    logger.Logger(context, "listignored");
-
-    var ignoredUsers = UserDataLogger.GetIgnoredUsers();
-
-    if (ignoredUsers.Count == 0)
-    {
-        return "📋 No users are currently on the ignore list.";
-    }
-
-    var response = $"📋 **Ignored Users List** ({ignoredUsers.Count} total)\n\n";
-
-    var restClient = host.Services.GetRequiredService<RestClient>();
-    int count = 0;
-
-    foreach (var id in ignoredUsers)
-    {
-        count++;
-        try
-        {
-            var user = await restClient.GetUserAsync(id);
-            response += $"{count}. {user.Username} ({id})\n";
-        }
-        catch
-        {
-            response += $"{count}. Unknown User ({id})\n";
-        }
-
-        if (response.Length > 1800 && count < ignoredUsers.Count)
-        {
-            response += $"\n*... and {ignoredUsers.Count - count} more users*";
-            break;
-        }
-    }
-
-    if (response.Length > 2000)
-    {
-        response = $"📋 **Ignored Users List** ({ignoredUsers.Count} total)\n\n";
-        count = 0;
-        foreach (var id in ignoredUsers.Take(10))
-        {
-            count++;
-            try
-            {
-                var user = await restClient.GetUserAsync(id);
-                response += $"{count}. {user.Username} ({id})\n";
-            }
-            catch
-            {
-                response += $"{count}. Unknown User ({id})\n";
-            }
-        }
-        if (ignoredUsers.Count > 10)
-        {
-            response += $"\n*... and {ignoredUsers.Count - 10} more users*";
-        }
-    }
-
-    return response;
-});
-
-host.AddSlashCommand("cleanupremovedservers", "Check and cleanup data for removed servers (Bot owner only)", async (ApplicationCommandContext context) =>
-{
-    var userId = context.User.Id;
-
-    logger.Logger(context, "cleanupremovedservers");
-
-    if (userId != 1157243448093573120)
-    {
-        return "❌ Only the bot owner can use this command!";
-    }
-
-    try
-    {
-        var client = host.Services.GetRequiredService<GatewayClient>();
-        var serverTracker = new ServerTracker();
-        var currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
-
-        foreach (var guildId in currentGuilds)
-        {
-            serverTracker.AddServer(guildId);
-        }
-        await serverTracker.CheckAndCleanupRemovedServers(currentGuilds);
-
-        var tracked = serverTracker.GetAllServers();
-        return $"✅ Cleanup completed!\n" +
-               $"📋 Tracking {tracked.Count} servers\n" +
-               $"🌐 Currently in {currentGuilds.Count} servers";
-    }
-    catch (Exception ex)
-    {
-        return $"❌ Error: {ex.Message}";
-    }
-});
-
-host.AddSlashCommand("github", "The open source code!", (ApplicationCommandContext context) =>
-{
-    logger.Logger(context, "github");
+    UserDataLogger.Logger(context, "github");
     return "github: [github](https://github.com/cresclent/SheepyBot)";
 });
 
-host.AddSlashCommand("terms", "the terms of service", (ApplicationCommandContext context) =>
+app.AddSlashCommand("terms", "the terms of service", (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "terms");
+    UserDataLogger.Logger(context, "terms");
     return new TAPCommands().TOS();
 });
 
-host.AddSlashCommand("privacy", "the privacy policy", (ApplicationCommandContext context) =>
+app.AddSlashCommand("privacy", "the privacy policy", (ApplicationCommandContext context) =>
 {
-    logger.Logger(context, "privacy");
+    UserDataLogger.Logger(context, "privacy");
     return new TAPCommands().Privacy();
 });
 
@@ -2309,29 +1899,29 @@ bool IsFourStar(string item)
 
 ulong applicationId = 1517174047169974404;
 
-var client = host.Services.GetRequiredService<GatewayClient>();
-var restClient = host.Services.GetRequiredService<RestClient>();
+var gatewayClient = app.Services.GetRequiredService<GatewayClient>();
+var restClientForEvents = app.Services.GetRequiredService<RestClient>();
 
-client.Ready += async (ReadyEventArgs args) =>
+gatewayClient.Ready += async (ReadyEventArgs args) =>
 {
     new Write().WriteLine("Bot is ready!");
     new Write().WriteLine($"Logged in as: {args.User?.Username ?? "Unknown"}");
 
     try
     {
-        await client.UpdatePresenceAsync(new PresenceProperties(UserStatusType.Online)
+        await gatewayClient.UpdatePresenceAsync(new PresenceProperties(UserStatusType.Online)
         {
             Activities = new[] { new UserActivityProperties(gameStatus, UserActivityType.Playing) }
         });
 
         var serverTracker = new ServerTracker();
-        var currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
+        var currentGuilds = gatewayClient.Cache.Guilds.Select(g => g.Value.Id).ToList();
 
         for (int i = 0; i < 5 && currentGuilds.Count == 0; i++)
         {
             new Write().WriteLine($"Waiting for cache to populate... (attempt {i + 1}/5)");
             await Task.Delay(3000);
-            currentGuilds = client.Cache.Guilds.Select(g => g.Value.Id).ToList();
+            currentGuilds = gatewayClient.Cache.Guilds.Select(g => g.Value.Id).ToList();
         }
 
         new Write().WriteLine($"Found {currentGuilds.Count} servers in cache");
@@ -2377,54 +1967,6 @@ client.Ready += async (ReadyEventArgs args) =>
             },
             new SlashCommandProperties("disablevotechannel", "Disable banner votes for this guild (Admin only)"),
             new SlashCommandProperties("votechannelstatus", "Check the status of vote channel for this guild"),
-            new SlashCommandProperties("allvotechannels", "View all configured vote channels (Bot owner only)"),
-
-            new SlashCommandProperties("suggest", "Suggest a new feature for the bot")
-            {
-                Options = new[]
-                {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "suggestion", "Your suggestion for the bot")
-                    {
-                        Required = true
-                    }
-                }
-            },
-            new SlashCommandProperties("approvesuggestion", "Approve a bot suggestion (Bot owner only)")
-            {
-                Options = new[]
-                {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Integer, "id", "Suggestion ID")
-                    {
-                        Required = true
-                    }
-                }
-            },
-            new SlashCommandProperties("denysuggestion", "Deny a bot suggestion (Bot owner only)")
-            {
-                Options = new[]
-                {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Integer, "id", "Suggestion ID")
-                    {
-                        Required = true
-                    },
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "reason", "Reason for denial (optional)")
-                    {
-                        Required = false
-                    }
-                }
-            },
-            new SlashCommandProperties("viewsuggestion", "View a specific suggestion by ID")
-            {
-                Options = new[]
-                {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Integer, "id", "Suggestion ID")
-                    {
-                        Required = true
-                    }
-                }
-            },
-            new SlashCommandProperties("listsuggestions", "List all bot suggestions"),
-
             new SlashCommandProperties("setstartupchannel", "Set the channel for bot startup announcements (Admin only)")
             {
                 Options = new[]
@@ -2441,8 +1983,6 @@ client.Ready += async (ReadyEventArgs args) =>
             },
             new SlashCommandProperties("disablestartup", "Disable bot startup announcements (Admin only)"),
             new SlashCommandProperties("startupstatus", "Check the status of startup announcements (Admin only)"),
-            new SlashCommandProperties("allstartupchannels", "View all configured startup announcement channels (Bot owner only)"),
-
             new SlashCommandProperties("setglobalchannel", "Set the channel for global announcements (Admin only)")
             {
                 Options = new[]
@@ -2473,36 +2013,33 @@ client.Ready += async (ReadyEventArgs args) =>
             },
             new SlashCommandProperties("disableglobal", "Disable global announcements for this guild (Admin only)"),
             new SlashCommandProperties("globalstatus", "Check the status of global announcements for this guild (Admin only)"),
-            new SlashCommandProperties("allglobalchannels", "View all configured global announcement channels (Bot owner only)"),
-
-            new SlashCommandProperties("ignoreuser", "Add a user to the ignore list (Admin only, specific channel)")
+            new SlashCommandProperties("suggest", "Suggest a new feature for the bot")
             {
                 Options = new[]
                 {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.User, "user", "The user to ignore")
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "suggestion", "Your suggestion for the bot")
                     {
                         Required = true
                     }
                 }
             },
-            new SlashCommandProperties("unignoreuser", "Remove a user from the ignore list (Admin only, specific channel)")
+            new SlashCommandProperties("viewsuggestion", "View a specific suggestion by ID")
             {
                 Options = new[]
                 {
-                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.User, "user", "The user to unignore")
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Integer, "id", "Suggestion ID")
                     {
                         Required = true
                     }
                 }
             },
-            new SlashCommandProperties("listignored", "List all ignored users (Admin only, specific channel)"),
+            new SlashCommandProperties("listsuggestions", "List all bot suggestions"),
             new SlashCommandProperties("github", "The open source code!"),
             new SlashCommandProperties("terms", "the terms of service"),
-            new SlashCommandProperties("privacy", "the privacy policy"),
-            new SlashCommandProperties("cleanupremovedservers", "Check and cleanup data for removed servers (Bot owner only)")
+            new SlashCommandProperties("privacy", "the privacy policy")
         };
 
-        await restClient.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
+        await restClientForEvents.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
         new Write().WriteLine($"{commands.Count} commands registered!");
         new Write().WriteLine("User data saved to: userdata/[userId].json");
         new Write().WriteLine("Suggestions saved to: suggestions/suggestion-[id].json");
@@ -2514,7 +2051,7 @@ client.Ready += async (ReadyEventArgs args) =>
         }
         new Write().WriteLine($"Commands: {commandsstring.TrimEnd(',', ' ')}");
 
-        var startupAnnouncement = new StartupAnnouncement(restClient);
+        var startupAnnouncement = new StartupAnnouncement(restClientForEvents);
         await startupAnnouncement.SendStartupAnnouncementAsync();
     }
     catch (Exception ex)
@@ -2538,5 +2075,7 @@ AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
     new Write().WriteLine("Goodbye!");
 };
 
+app.MapRazorPages();
+
 new Write().WriteLine("Starting bot...");
-await host.RunAsync();
+await app.RunAsync();

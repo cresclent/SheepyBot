@@ -17,6 +17,7 @@ namespace discord_bot.Tools
             if (type == 0) //debug
             {
                 prefix = "debug";
+                Console.ForegroundColor = ConsoleColor.DarkGray;
             }
             if (type == 1) //info
             {
@@ -26,6 +27,17 @@ namespace discord_bot.Tools
             else if (type == 2) //WARN
             {
                 prefix = "WARN";
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+            }
+            else if (type == 3) //Error
+            {
+                prefix = "error";
+                Console.BackgroundColor = ConsoleColor.Red;
+            }
+            else if (type == 4) //FATAL
+            {
+                prefix = "FATAL";
+                Console.BackgroundColor= ConsoleColor.Magenta;
             }
             Console.Write(prefix);
             Console.ForegroundColor = ConsoleColor.White;
