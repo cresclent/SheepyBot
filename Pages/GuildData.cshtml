@@ -1,0 +1,655 @@
+﻿@page "{guildId?}"
+@model discord_bot.Pages.GuildDataModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sheepy Bot - Guild Data</title>
+    <link rel="stylesheet" href="/css/site.css" />
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --border: #2d2d4a;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --primary: #818cf8;
+            --primary-dark: #6366f1;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .page-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .page-title h1 {
+            color: var(--text);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            padding: 10px 24px;
+            background: var(--primary);
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .guild-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .guild-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+        .guild-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .guild-card .guild-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .guild-card .guild-id {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .guild-card .view-link {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .guild-card .view-link:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .guild-card .guild-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .guild-selector {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .guild-selector select {
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            min-width: 300px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 500px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        .guild-selector select:hover {
+            border-color: var(--primary);
+        }
+        .guild-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+        }
+        .guild-selector select option {
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 8px 12px;
+        }
+        .guild-selector select option:hover {
+            background: var(--primary);
+        }
+        .guild-selector select option:checked {
+            background: var(--primary);
+            color: white;
+        }
+        .guild-selector .selected-guild {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .guild-selector .selected-guild strong {
+            color: var(--text);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--card-bg);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        td {
+            color: var(--text);
+        }
+        tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            margin-top: 30px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        .section-title:first-of-type {
+            margin-top: 0;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .search-box input {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .guild-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 16px 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .guild-info-header .guild-name-large {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .guild-info-header .guild-id-large {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* DOUBLE COLLAPSE STYLES */
+        .user-row {
+            cursor: pointer;
+        }
+        .user-row:hover {
+            background: rgba(129, 140, 248, 0.08);
+        }
+        .expand-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            color: var(--text-muted);
+        }
+        .expand-icon.open {
+            transform: rotate(180deg);
+        }
+        .command-details {
+            display: none;
+            background: rgba(255,255,255,0.02);
+        }
+        .command-details.open {
+            display: table-row;
+        }
+        .command-details td {
+            padding: 6px 16px 6px 40px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .command-details .command-name {
+            color: var(--primary);
+            font-family: monospace;
+            cursor: pointer;
+        }
+        .command-details .command-name:hover {
+            text-decoration: underline;
+        }
+        .command-details .command-count {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            float: right;
+            cursor: pointer;
+        }
+        .command-spans {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .badge-count {
+            background: var(--primary);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+        .cmd-list {
+            list-style: none;
+            padding: 8px 0 0 0;
+            margin: 0;
+        }
+        .cmd-list li {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.85rem;
+        }
+        .cmd-list li:last-child {
+            border-bottom: none;
+        }
+
+        .cmd-timestamps {
+            display: none;
+            padding: 8px 0 0 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .cmd-timestamps.open {
+            display: block;
+        }
+        .cmd-timestamps .timestamp-item {
+            padding: 2px 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .cmd-timestamps .timestamp-item:hover {
+            color: var(--text);
+        }
+        .cmd-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .cmd-header:hover {
+            background: rgba(129, 140, 248, 0.08);
+        }
+        .cmd-header .cmd-expand {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+        .cmd-header .cmd-expand.open {
+            transform: rotate(90deg);
+        }
+        .user-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        /* Scrollbar styling for dropdown */
+        .guild-selector select::-webkit-scrollbar {
+            width: 8px;
+        }
+        .guild-selector select::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+        .guild-selector select::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        .guild-selector select::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <h1>📊 Guild Data</h1>
+        <a href="/" class="back-link">← Back to Control Panel</a>
+    </div>
+
+    @if (Model.SelectedGuildId == 0)
+    {
+        <div class="search-box">
+            <input type="text" id="guildSearch" placeholder="🔍 Search guilds..." onkeyup="filterGuilds()" />
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+            <span style="color: var(--text-muted); font-size: 0.95rem;">
+                Showing <span id="visibleCount">@Model.Guilds.Count</span> of @Model.Guilds.Count guilds
+            </span>
+            <span style="color: var(--text-muted); font-size: 0.9rem;">
+                Total: @Model.Guilds.Count guilds
+            </span>
+        </div>
+
+        <div class="guild-list" id="guildList">
+            @foreach (var guild in Model.Guilds)
+            {
+                <div class="guild-card" data-guild-id="@guild.Id" data-guild-name="@guild.Name.ToLower()">
+                    <div class="guild-icon">🏠</div>
+                    <div class="guild-name">@guild.Name</div>
+                    <div class="guild-id">ID: @guild.Id</div>
+                    <a href="/GuildData/@guild.Id" class="view-link">📊 View Data</a>
+                </div>
+            }
+        </div>
+
+        <script>
+            function filterGuilds() {
+                var input = document.getElementById('guildSearch');
+                var filter = input.value.toLowerCase();
+                var cards = document.querySelectorAll('.guild-card');
+                var visible = 0;
+
+                cards.forEach(function(card) {
+                    var name = card.getAttribute('data-guild-name');
+                    var id = card.getAttribute('data-guild-id');
+                    if (name.includes(filter) || id.includes(filter)) {
+                        card.style.display = 'flex';
+                        visible++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                document.getElementById('visibleCount').textContent = visible;
+            }
+        </script>
+    }
+    else
+    {
+        <div class="guild-info-header">
+            <div>
+                <div class="guild-name-large">@Model.SelectedGuildName</div>
+                <div class="guild-id-large">ID: @Model.SelectedGuildId</div>
+            </div>
+            <a href="/GuildData" class="back-link" style="padding: 8px 16px; font-size: 0.85rem;">← Back to All Guilds</a>
+        </div>
+
+        <div class="guild-selector">
+            <form method="get" action="/GuildData">
+                <label style="color: var(--text-muted); margin-right: 12px; display: inline-block; margin-bottom: 8px;">Switch to another guild:</label>
+                <select name="guildId" onchange="this.form.submit()">
+                    <option value="0">-- Back to guild list --</option>
+                    @foreach (var guild in Model.Guilds)
+                    {
+                        <option value="@guild.Id" selected="@(Model.SelectedGuildId == guild.Id)">
+                            @guild.Name (@guild.Id)
+                        </option>
+                    }
+                </select>
+            </form>
+        </div>
+
+        @if (Model.GuildData != null)
+        {
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value">@Model.GuildData.TotalUsers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Commands</div>
+                    <div class="stat-value">@Model.GuildData.TotalCommands</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Channels Used</div>
+                    <div class="stat-value">@Model.GuildData.ChannelCount</div>
+                </div>
+            </div>
+
+            @if (Model.GuildData.TopUsers.Count > 0)
+            {
+                <h3 class="section-title">Top Users</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Rank</th>
+                            <th>User</th>
+                            <th style="width: 120px;">Commands</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.GuildData.TopUsers.Count; i++)
+                        {
+                            var user = Model.GuildData.TopUsers[i];
+                            var medal = i == 0 ? "🥇" : i == 1 ? "🥈" : i == 2 ? "🥉" : $"#{i + 1}";
+                            var collapseId = $"userCollapse_{i}";
+                            <tr class="user-row" onclick="toggleCollapse('@collapseId', this)">
+                                <td>@medal</td>
+                                <td>
+                                    <div class="user-name-cell">
+                                        <div class="user-avatar">@(user.UserName?.FirstOrDefault().ToString().ToUpper() ?? "?")</div>
+                                        <strong>@user.UserName</strong>
+                                        <span class="badge-count">@user.TotalCommands</span>
+                                    </div>
+                                </td>
+                                <td>@user.TotalCommands</td>
+                                <td>
+                                    <span class="expand-icon" id="icon_@collapseId">▼</span>
+                                </td>
+                            </tr>
+                            <tr class="command-details" id="@collapseId">
+                                <td colspan="4">
+                                    <div style="padding: 8px 0;">
+                                        <strong style="color: var(--text-muted); font-size: 0.8rem;">Command Usage:</strong>
+                                        @if (user.CommandCounts.Count > 0)
+                                        {
+                                            <ul class="cmd-list">
+                                                @foreach (var cmd in user.CommandCounts)
+                                                {
+                                                    var cmdId = $"cmd_{collapseId}_{cmd.CommandName.Replace("/", "")}";
+                                                    <li>
+                                                        <div class="cmd-header" onclick="toggleCmdTimestamps('@cmdId', event)">
+                                                            <span class="command-spans">
+                                                                <span class="command-name">/@cmd.CommandName</span>
+                                                                <span class="command-count">@cmd.Count times</span>
+                                                            </span>
+                                                            <span class="cmd-expand" id="icon_@cmdId">▶</span>
+                                                        </div>
+                                                        <div class="cmd-timestamps" id="@cmdId">
+                                                            @foreach (var timestamp in cmd.Timestamps.Take(20))
+                                                            {
+                                                                <div class="timestamp-item">🕐 @timestamp</div>
+                                                            }
+                                                            @if (cmd.Timestamps.Count > 20)
+                                                            {
+                                                                <div class="timestamp-item" style="color: var(--text-muted); font-style: italic;">
+                                                                    ... and @(cmd.Timestamps.Count - 20) more
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: var(--text-muted); font-size: 0.85rem;">No command data available</span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            @if (Model.GuildData.ChannelStats.Count > 0)
+            {
+                <h3 class="section-title">Channel Breakdown</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Channel</th>
+                            <th>Commands</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var channel in Model.GuildData.ChannelStats.OrderByDescending(c => c.CommandCount))
+                        {
+                            <tr>
+                                <td>@channel.ChannelName</td>
+                                <td>@channel.CommandCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>No data found for this guild</p>
+            </div>
+        }
+    }
+
+    <script>
+        function toggleCollapse(id, row) {
+            var element = document.getElementById(id);
+            var icon = document.getElementById('icon_' + id);
+            
+            if (element.classList.contains('open')) {
+                element.classList.remove('open');
+                icon.classList.remove('open');
+            } else {
+                element.classList.add('open');
+                icon.classList.add('open');
+            }
+        }
+
+        function toggleCmdTimestamps(id, event) {
+            event.stopPropagation();
+            var element = document.getElementById(id);
+            var icon = document.getElementById('icon_' + id);
+            
+            if (element.classList.contains('open')) {
+                element.classList.remove('open');
+                icon.classList.remove('open');
+            } else {
+                element.classList.add('open');
+                icon.classList.add('open');
+            }
+        }
+    </script>
+</body>
+</html>

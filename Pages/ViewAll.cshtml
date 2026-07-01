@@ -8,6 +8,25 @@
     <title>Sheepy Bot - View All</title>
     <link rel="stylesheet" href="/css/site.css" />
     <style>
+        :root {
+            --bg: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --border: #2d2d4a;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --primary: #818cf8;
+            --primary-dark: #6366f1;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
         .view-nav {
             display: flex;
             gap: 10px;
@@ -19,13 +38,14 @@
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 10px;
-            color: var(--text);
+            color: var(--text-muted);
             text-decoration: none;
             transition: all 0.3s ease;
         }
         .view-nav a:hover {
             background: rgba(129, 140, 248, 0.15);
             border-color: var(--primary);
+            color: var(--text);
         }
         .view-nav a.active {
             background: var(--primary);
@@ -61,6 +81,11 @@
             flex-wrap: wrap;
             gap: 15px;
         }
+        .page-title h1 {
+            color: var(--text);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+        }
         .back-link {
             display: inline-block;
             padding: 10px 24px;
@@ -95,6 +120,162 @@
         .text-muted {
             color: var(--text-muted);
         }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-card .stat-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .data-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+        .data-container pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            color: var(--text);
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        /* COLLAPSE STYLES */
+        .user-row {
+            cursor: pointer;
+        }
+        .user-row:hover {
+            background: rgba(129, 140, 248, 0.08);
+        }
+        .expand-icon {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            color: var(--text-muted);
+        }
+        .expand-icon.open {
+            transform: rotate(180deg);
+        }
+        .command-details {
+            display: none;
+            background: rgba(255,255,255,0.02);
+        }
+        .command-details.open {
+            display: table-row;
+        }
+        .command-details td {
+            padding: 6px 16px 6px 40px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .command-details .command-name {
+            color: var(--primary);
+            font-family: monospace;
+            cursor: pointer;
+        }
+        .command-details .command-name:hover {
+            text-decoration: underline;
+        }
+        .command-details .command-count {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            float: right;
+            cursor: pointer;
+        }
+
+        .command-span {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .badge-count {
+            background: var(--primary);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+        .cmd-list {
+            list-style: none;
+            padding: 8px 0 0 0;
+            margin: 0;
+        }
+        .cmd-list li {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.85rem;
+        }
+        .cmd-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* NESTED COMMAND TIMESTAMPS */
+        .cmd-timestamps {
+            display: none;
+            padding: 8px 0 0 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .cmd-timestamps.open {
+            display: block;
+        }
+        .cmd-timestamps .timestamp-item {
+            padding: 2px 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .cmd-timestamps .timestamp-item:hover {
+            color: var(--text);
+        }
+        .cmd-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .cmd-header:hover {
+            background: rgba(129, 140, 248, 0.08);
+        }
+        .cmd-header .cmd-expand {
+            transition: transform 0.3s ease;
+            display: inline-block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+        .cmd-header .cmd-expand.open {
+            transform: rotate(90deg);
+        }
     </style>
 </head>
 <body>
@@ -120,7 +301,7 @@
     else if (Model.ViewType == "Votes")
     {
         <h2>Votes</h2>
-        if (Model.Votes.Count > 0)
+        @if (Model.Votes.Count > 0)
         {
             <table>
                 <thead>
@@ -155,7 +336,7 @@
     else if (Model.ViewType == "Startups")
     {
         <h2>Startup Channels</h2>
-        if (Model.StartupChannels.Count > 0)
+        @if (Model.StartupChannels.Count > 0)
         {
             <table>
                 <thead>
@@ -188,7 +369,7 @@
     else if (Model.ViewType == "Globals")
     {
         <h2>Global Channels</h2>
-        if (Model.GlobalChannels.Count > 0)
+        @if (Model.GlobalChannels.Count > 0)
         {
             <table>
                 <thead>
@@ -220,92 +401,122 @@
     }
     else if (Model.ViewType == "AllData")
     {
-        <h2 class="section-title">📊 All Data</h2>
+        <h2 class="section-title">📊 All Data Report</h2>
 
-        <h3 class="section-title">Votes</h3>
-        if (Model.Votes.Count > 0)
-        {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Vote ID</th>
-                        <th>User ID</th>
-                        <th>Vote Value</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var vote in Model.Votes)
-                    {
-                        <tr>
-                            <td>@vote.VoteId</td>
-                            <td>@vote.UserId</td>
-                            <td>@vote.VoteValue</td>
-                            <td>@vote.Timestamp</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p class="text-muted">No votes found</p>
-        }
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Guilds</div>
+                <div class="stat-value">@Model.AllDataReport.TotalGuilds</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-value">@Model.AllDataReport.TotalUsers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Commands</div>
+                <div class="stat-value">@Model.AllDataReport.TotalCommands</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Command Users</div>
+                <div class="stat-value">@Model.AllDataReport.TotalCommandUsers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Suggestions</div>
+                <div class="stat-value">@Model.AllDataReport.TotalSuggestions</div>
+                <div class="stat-sub">
+                    ⏳ @Model.AllDataReport.PendingSuggestions · ✅ @Model.AllDataReport.ApprovedSuggestions · ❌ @Model.AllDataReport.DeniedSuggestions
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-title">Vote Channels</h3>
+        <div class="data-container">
+            <pre>@Model.AllDataReport.VoteChannels</pre>
+        </div>
 
         <h3 class="section-title">Startup Channels</h3>
-        if (Model.StartupChannels.Count > 0)
-        {
-            <table>
-                <thead>
-                    <tr>
-                        <th>Guild ID</th>
-                        <th>Guild Name</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var channel in Model.StartupChannels)
-                    {
-                        <tr>
-                            <td>@channel.ChannelId</td>
-                            <td>@channel.ChannelName</td>
-                            <td>Configured</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p class="text-muted">No startup channels found</p>
-        }
+        <div class="data-container">
+            <pre>@Model.AllDataReport.StartupChannels</pre>
+        </div>
 
         <h3 class="section-title">Global Channels</h3>
-        if (Model.GlobalChannels.Count > 0)
+        <div class="data-container">
+            <pre>@Model.AllDataReport.GlobalChannels</pre>
+        </div>
+
+        @if (Model.AllDataReport.TopUsersWithCommands.Count > 0)
         {
+            <h3 class="section-title">Top Command Users</h3>
             <table>
                 <thead>
                     <tr>
-                        <th>Guild ID</th>
-                        <th>Guild Name</th>
-                        <th>Status</th>
+                        <th style="width: 60px;">Rank</th>
+                        <th>User</th>
+                        <th style="width: 120px;">Commands</th>
+                        <th style="width: 40px;"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var channel in Model.GlobalChannels)
+                    @for (int i = 0; i < Model.AllDataReport.TopUsersWithCommands.Count; i++)
                     {
-                        <tr>
-                            <td>@channel.ChannelId</td>
-                            <td>@channel.ChannelName</td>
-                            <td>Configured</td>
+                        var user = Model.AllDataReport.TopUsersWithCommands[i];
+                        var medal = i == 0 ? "🥇" : i == 1 ? "🥈" : i == 2 ? "🥉" : $"#{i + 1}";
+                        var collapseId = $"userCollapse_{i}";
+                        <tr class="user-row" onclick="toggleCollapse('@collapseId', this)">
+                            <td>@medal</td>
+                            <td>
+                                <strong>@user.UserName</strong>
+                                <span class="badge-count">@user.TotalCommands</span>
+                            </td>
+                            <td>@user.TotalCommands</td>
+                            <td>
+                                <span class="expand-icon" id="icon_@collapseId">▼</span>
+                            </td>
+                        </tr>
+                        <tr class="command-details" id="@collapseId">
+                            <td colspan="4">
+                                <div style="padding: 8px 0;">
+                                    <strong style="color: var(--text-muted); font-size: 0.8rem;">Command Usage:</strong>
+                                    @if (user.CommandCounts.Count > 0)
+                                    {
+                                        <ul class="cmd-list">
+                                            @foreach (var cmd in user.CommandCounts)
+                                            {
+                                                var cmdId = $"cmd_{collapseId}_{cmd.CommandName.Replace("/", "")}";
+                                                <li>
+                                                    <div class="cmd-header" onclick="toggleCmdTimestamps('@cmdId', event)">
+                                                        <span class="command-span">
+                                                            <span class="command-name">/@cmd.CommandName</span>
+                                                            <span class="command-count">@cmd.Count times</span>
+                                                        </span>
+                                                        <span class="cmd-expand" id="icon_@cmdId">▶</span>
+                                                    </div>
+                                                    <div class="cmd-timestamps" id="@cmdId">
+                                                        @foreach (var timestamp in cmd.Timestamps.Take(20))
+                                                        {
+                                                            <div class="timestamp-item">🕐 @timestamp</div>
+                                                        }
+                                                        @if (cmd.Timestamps.Count > 20)
+                                                        {
+                                                            <div class="timestamp-item" style="color: var(--text-muted); font-style: italic;">
+                                                                ... and @(cmd.Timestamps.Count - 20) more
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: var(--text-muted); font-size: 0.85rem;">No command data available</span>
+                                    }
+                                </div>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
-        }
-        else
-        {
-            <p class="text-muted">No global channels found</p>
         }
     }
     else
@@ -315,5 +526,34 @@
             <p>Invalid view type: @Model.ViewType</p>
         </div>
     }
+
+    <script>
+        function toggleCollapse(id, row) {
+            var element = document.getElementById(id);
+            var icon = document.getElementById('icon_' + id);
+            
+            if (element.classList.contains('open')) {
+                element.classList.remove('open');
+                icon.classList.remove('open');
+            } else {
+                element.classList.add('open');
+                icon.classList.add('open');
+            }
+        }
+
+        function toggleCmdTimestamps(id, event) {
+            event.stopPropagation();
+            var element = document.getElementById(id);
+            var icon = document.getElementById('icon_' + id);
+            
+            if (element.classList.contains('open')) {
+                element.classList.remove('open');
+                icon.classList.remove('open');
+            } else {
+                element.classList.add('open');
+                icon.classList.add('open');
+            }
+        }
+    </script>
 </body>
 </html>
