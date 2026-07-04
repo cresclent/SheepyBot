@@ -16,17 +16,20 @@ namespace discord_bot.Pages
         private readonly GlobalAnnouncement _globalAnnouncement;
         private readonly StartupAnnouncement _startupAnnouncement;
         private readonly GatewayClient _gatewayClient;
+        private readonly ServerTracker _serverTracker;
 
         public IndexModel(
             VoteService voteService,
             GlobalAnnouncement globalAnnouncement,
             StartupAnnouncement startupAnnouncement,
-            GatewayClient gatewayClient)
+            GatewayClient gatewayClient,
+            ServerTracker serverTracker)
         {
             _voteService = voteService;
             _globalAnnouncement = globalAnnouncement;
             _startupAnnouncement = startupAnnouncement;
             _gatewayClient = gatewayClient;
+            _serverTracker = serverTracker;
         }
 
         public string Message { get; set; } = string.Empty;
@@ -34,8 +37,16 @@ namespace discord_bot.Pages
         public string CurrentBanner => _voteService?.GetCurrentBanner() ?? "Unknown";
         public string BotOwnerId => "1157243448093573120";
 
+        public int serverCount { get; set; }
+
         public void OnGet()
         {
+            getServerCount();
+        }
+
+        private void getServerCount()
+        {
+            serverCount = _serverTracker.getServerCount();
         }
 
         public async Task<IActionResult> OnPost()
