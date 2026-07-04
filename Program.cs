@@ -143,7 +143,7 @@ string[] statuses = new string[]
     ""
 };
 
-string gameStatus = statuses[random.Next(0, statuses.Length)];
+string gameStatus = statuses[random.Next(0, statuses.Length)] + " https://discord.com/invite/JZC8rgUHMf";
 
 var cooldowns = new Dictionary<ulong, DateTime>();
 
@@ -261,21 +261,60 @@ app.AddSlashCommand("pity", "Check your current pity count and stats", (Applicat
            $"{GetStars(3)} 3-Stars: **{data.ThreeStarCount}**";
 });
 
-app.AddSlashCommand("StartupGuide", "A simple guide on what you could do", (ApplicationCommandContext context) =>
+app.AddSlashCommand("startupguide", "A simple guide on what you could do", async (ApplicationCommandContext context) =>
 {
-    UserDataLogger.Logger(context, "StartupGuide");
+    UserDataLogger.Logger(context, "startupguide");
     var userId = context.User.Id;
-    if (context.Guild != null)
+
+    if (context.Guild == null)
+        return "This command can only be used in a server!";
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "You need **Administrator** permissions to use this command!";
+    string helpMessage = $"# 🐑 **Sheepy Bot Startup Guide**\n\n" +
+           $"## 🚀 **Getting Started**\n" +
+           $"Welcome to Sheepy Bot! Here's how to set up your server:\n\n" +
+           $"## 📋 **Required Setup**\n" +
+           $"1. **Set up a vote channel** using `/setvotechannel`\n" +
+           $"   - This allows your server to participate in banner votes\n" +
+           $"   - Members can vote to change the current banner\n\n" +
+           $"2. **Set up startup announcements** using `/setstartupchannel`\n" +
+           $"   - Get notified when the bot restarts\n" +
+           $"   - Optional: ping a specific role\n\n" +
+           $"3. **Set up global announcements** using `/setglobalchannel`\n" +
+           $"   - Receive announcements from the bot owner\n" +
+           $"   - Optional: ping a specific role\n\n" +
+           $"## 🎮 **Commands Overview**\n" +
+           $"• `/pull` - Wish on the current banner (2.5 min cooldown)\n" +
+           $"• `/inventory` - Check your collected items\n" +
+           $"• `/pity` - Check your pity stats\n" +
+           $"• `/banner` - See current banner character\n" +
+           $"• `/votebanner` - Start a vote to change the banner\n" +
+           $"• `/guildleaderboard` - See who's most active in your server\n\n" +
+           $"## ℹ️ **Need Help?**\n" +
+           $"Use `/help` for a complete command list\n" +
+           $"Join my [Discord server](https://discord.com/invite/JZC8rgUHMf) or contact Cresclent for assistance!";
+
+    var parts = MessageSplitterHelper.SplitMessage(helpMessage);
+
+    if (parts.Count == 1)
     {
-        bool isAdmin = false;
-        var guildUser = await context.Guild.GetUserAsync(userId);
-        if (guildUser != null)
-        {
-            var permissions = guildUser.GetPermissions(context.Guild);
-            isAdmin = (permissions & Permissions.Administrator) == Permissions.Administrator;
-        }
+        return parts[0];
     }
 
+    var firstMessage = parts[0];
+
+    for (int i = 1; i < parts.Count; i++)
+    {
+        await context.Channel.SendMessageAsync(parts[i]);
+    }
+
+    return firstMessage;
 });
 
 app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandContext context) =>
@@ -1953,7 +1992,6 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
 
         var trackedServers = serverTracker.GetAllServers();
         new Write().WriteLine($"Tracking {trackedServers.Count} servers total");
-
         var commands = new List<ApplicationCommandProperties>
         {
             new SlashCommandProperties("pity", "Check your stats"),
@@ -1962,6 +2000,7 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("pull", "Perform 10 wishes (2.5 minute cooldown)"),
             new SlashCommandProperties("help", "Display Help message"),
             new SlashCommandProperties("coinflip", "Simple Coinflip"),
+            new SlashCommandProperties("startupguide", "A simple guide to get your server setup!"),
             new SlashCommandProperties("bannerreset", "banner resetting, can ONLY be done by cresclent"),
             new SlashCommandProperties("guilddata", "Show command logs for this guild (Admin only)"),
             new SlashCommandProperties("alldata", "Show ALL command data (Admin only, specific channel)"),
