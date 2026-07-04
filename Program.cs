@@ -1,7 +1,9 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
-using discord_bot.Tools;
+using discord_bot.Helpers;
+using discord_bot.Services;
 using discord_bot.SmallDat;
+using discord_bot.Tools;
 using discord_bot.userdataModels;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +20,7 @@ using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 using System.Text;
 using System.Text.Json;
-using discord_bot.Services;
+using static NetCord.Mentionable;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +59,8 @@ builder.Services.AddSingleton<GlobalAnnouncement>(provider =>
     var rest = provider.GetRequiredService<RestClient>();
     return new GlobalAnnouncement(rest);
 });
+
+builder.Services.AddScoped<ServerTracker>();
 
 string[] fiveStarCharacters = new[]
 {
@@ -255,6 +259,23 @@ app.AddSlashCommand("pity", "Check your current pity count and stats", (Applicat
            $"{GetStars(5)} 5-Stars: **{data.FiveStarCount}**\n" +
            $"{GetStars(4)} 4-Stars: **{data.FourStarCount}**\n" +
            $"{GetStars(3)} 3-Stars: **{data.ThreeStarCount}**";
+});
+
+app.AddSlashCommand("StartupGuide", "A simple guide on what you could do", (ApplicationCommandContext context) =>
+{
+    UserDataLogger.Logger(context, "StartupGuide");
+    var userId = context.User.Id;
+    if (context.Guild != null)
+    {
+        bool isAdmin = false;
+        var guildUser = await context.Guild.GetUserAsync(userId);
+        if (guildUser != null)
+        {
+            var permissions = guildUser.GetPermissions(context.Guild);
+            isAdmin = (permissions & Permissions.Administrator) == Permissions.Administrator;
+        }
+    }
+
 });
 
 app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandContext context) =>
@@ -592,7 +613,7 @@ app.AddSlashCommand("votehistory", "View recent banner vote history", async (App
 
 app.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin only)", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "channel", Description = "The channel to send votes to (optional)")] Channel? channel = null,
-    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
+    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] NetCord.Role? role = null) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -710,7 +731,7 @@ app.AddSlashCommand("votechannelstatus", "Check the status of vote channel for t
 
 app.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announcements (Admin only)", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
-    [SlashCommandParameter(Name = "role", Description = "the role to ping.. not putting anything in will make it not ping anything")] Role? role = null) =>
+    [SlashCommandParameter(Name = "role", Description = "the role to ping.. not putting anything in will make it not ping anything")] NetCord.Role? role = null) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -846,7 +867,7 @@ app.AddSlashCommand("startupstatus", "Check the status of startup announcements 
 
 app.AddSlashCommand("setglobalchannel", "Set the channel for global announcements (Admin only)", async (ApplicationCommandContext context,
     [SlashCommandParameter(Name = "channel", Description = "The channel to send announcements to (optional)")] Channel? channel = null,
-    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] Role? role = null) =>
+    [SlashCommandParameter(Name = "role", Description = "The role to ping (optional)")] NetCord.Role? role = null) =>
 {
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
@@ -1614,7 +1635,7 @@ app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific chan
     var userId = context.User.Id;
     var guildId = context.Guild?.Id ?? 0;
     var channelId = context.Channel?.Id ?? 0;
-
+    UserDataLogger.Logger(context, "alldata");
     if (guildId != 1495153417306247339 || channelId != 1495161155608645656)
     {
         return "❌ This command can only be used in Cresclent's server in the designated channel!";
@@ -1637,9 +1658,6 @@ app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific chan
     {
         return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
     }
-
-    UserDataLogger.Logger(context, "alldata");
-
     var startDate = new DateTime(2026, 6, 20);
     var endDate = DateTime.Now.Date;
     var allLogs = new List<UserDataLogger>();
@@ -1914,10 +1932,9 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
         {
             Activities = new[] { new UserActivityProperties(gameStatus, UserActivityType.Playing) }
         });
-
         var serverTracker = new ServerTracker();
+        serverTracker.setGateway(gatewayClient);
         var currentGuilds = gatewayClient.Cache.Guilds.Select(g => g.Value.Id).ToList();
-
         for (int i = 0; i < 5 && currentGuilds.Count == 0; i++)
         {
             new Write().WriteLine($"Waiting for cache to populate... (attempt {i + 1}/5)");

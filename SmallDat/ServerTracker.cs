@@ -10,6 +10,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using discord_bot.Tools;
+using System.Text.Json.Serialization.Metadata;
+using Newtonsoft.Json.Linq;
+using NetCord.Hosting.Gateway;
 
 namespace discord_bot.SmallDat
 {
@@ -18,6 +21,7 @@ namespace discord_bot.SmallDat
         private readonly string _dataDirectory;
         private readonly string _serverListFile;
         private HashSet<ulong> _servers;
+        private GatewayClient _gateway;
 
         public ServerTracker()
         {
@@ -88,8 +92,27 @@ namespace discord_bot.SmallDat
             return _servers.Contains(guildId);
         }
 
+        public void setGateway(GatewayClient client)
+        {
+            _gateway = client;
+        }
+
+        public GatewayClient getGateway()
+        {
+            if (_gateway != null)
+                return _gateway;
+
+            return new GatewayClient(new BotToken((string)JObject.Parse(File.ReadAllText("appsettings.json"))["Discord"]["Token"]));
+        }
+
+        public int getServerCount()
+        {
+            return _servers.Count;
+        }
+
         public List<ulong> GetAllServers()
         {
+            LoadServers();
             return _servers.ToList();
         }
 
