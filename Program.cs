@@ -22,6 +22,7 @@ using NetCord.Services.ApplicationCommands;
 using System.Text;
 using System.Text.Json;
 using static NetCord.Mentionable;
+using Newtonsoft.Json.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,7 @@ builder.Services.AddRazorPages();
 
 var token = builder.Configuration["Discord:Token"]
             ?? Environment.GetEnvironmentVariable("DISCORD_TOKEN");
+bool startpinger = bool.Parse(JObject.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "appsettings.json")))["Bot"]["Testing"].ToString());
 
 if (string.IsNullOrEmpty(token))
 {
@@ -52,7 +54,7 @@ builder.Services
 builder.Services.AddSingleton<StartupAnnouncement>(provider =>
 {
     var rest = provider.GetRequiredService<RestClient>();
-    return new StartupAnnouncement(rest);
+    return new StartupAnnouncement(rest, startpinger);
 });
 
 builder.Services.AddSingleton<GlobalAnnouncement>(provider =>
@@ -64,64 +66,15 @@ builder.Services.AddSingleton<GlobalAnnouncement>(provider =>
 builder.Services.AddScoped<ServerTracker>();
 builder.Services.AddSingleton<serverDataManager>();
 
-string[] fiveStarCharacters = new[]
-{
-    "Sandrone", "Albedo", "Alhaitham", "Arataki Itto", "Arlecchino",
-    "Baizhu", "Chasca", "Citlali", "Clorinde", "Cyno", "Emilie",
-    "Escoffier", "Eula", "Flins", "Furina", "Ganyu", "Hu Tao",
-    "Ineffa", "Kaedehara Kazuha", "Kamisato Ayaka", "Kamisato Ayato",
-    "Kinich", "Klee", "Lauma", "Lyney", "Mavuika", "Mualani",
-    "Nahida", "Navia", "Nefer", "Neuvillette", "Sigewinne",
-    "Raiden Shogun", "Sangonomiya Kokomi", "Shenhe", "Skirk",
-    "Tartaglia", "Varesa", "Venti", "Varka", "Wanderer",
-    "Wriothesley", "Xiao", "Xianyun", "Xilonen", "Yae Miko",
-    "Yelan", "Yoimiya", "Zhongli", "Chiori", "Durin",
-    "Columbina", "Zibai", "Linnea", "Lohen", "Nicole"
-};
+string[] fiveStarCharacters = baseData.fiveStarCharacters;
 
-string[] fourStarCharacters = new[]
-{
-    "Aino", "Amber", "Barbara", "Beidou", "Bennett", "Candace",
-    "Charlotte", "Chevreuse", "Chongyun", "Collei", "Dahlia",
-    "Diona", "Dori", "Faruzan", "Fischl", "Freminet", "Gaming",
-    "Gorou", "Iansan", "Ifa", "Kachina", "Kaveh", "Kaeya",
-    "Kirara", "Kujou Sara", "Kuki Shinobu", "Lan Yan", "Layla",
-    "Lisa", "Lynette", "Mika", "Noelle", "Ningguang", "Ororon",
-    "Razor", "Rosaria", "Sayu", "Sethos", "Shikanoin Heizou",
-    "Sucrose", "Thoma", "Xiangling", "Xingqiu", "Xinyan",
-    "Yanfei", "Yaoyao", "Yun Jin", "Jahoda", "Illuga", "Prune"
-};
+string[] fourStarCharacters = baseData.fourStarCharacters;
 
-string[] threeStarItems = new[]
-{
-    "Debate Club", "Harbinger of Dawn", "Skyrider Sword",
-    "Ferrous Shadow", "Cool Steel", "Bloodtainted Greatsword",
-    "Emerald Orb", "Black Tassel", "Magic Guide"
-};
+string[] threeStarItems = baseData.threeStarItems;
 
-string[] standardFiveStars = new[]
-{
-    "Tighnari", "Jean", "Mona", "Dehya", "Diluc", "Keqing", "Qiqi", "Yumemizuki Mizuki"
-};
+string[] standardFiveStars = baseData.standardFiveStars;
 
-Dictionary<int, int> pityRates = new()
-{
-    {0, 167}, {1, 167}, {2, 167}, {3, 167}, {4, 167}, {5, 167},
-    {6, 167}, {7, 167}, {8, 167}, {9, 167}, {10, 167}, {11, 167},
-    {12, 167}, {13, 167}, {14, 167}, {15, 167}, {16, 167}, {17, 167},
-    {18, 167}, {19, 167}, {20, 167}, {21, 167}, {22, 167}, {23, 167},
-    {24, 167}, {25, 167}, {26, 167}, {27, 167}, {28, 167}, {29, 167},
-    {30, 167}, {31, 167}, {32, 167}, {33, 167}, {34, 167}, {35, 167},
-    {36, 167}, {37, 167}, {38, 167}, {39, 167}, {40, 167}, {41, 167},
-    {42, 167}, {43, 167}, {44, 167}, {45, 167}, {46, 167}, {47, 167},
-    {48, 167}, {49, 167}, {50, 167}, {51, 167}, {52, 167}, {53, 167},
-    {54, 167}, {55, 167}, {56, 167}, {57, 167}, {58, 167}, {59, 167},
-    {60, 167}, {61, 167}, {62, 167}, {63, 167}, {64, 167}, {65, 167},
-    {66, 167}, {67, 167}, {68, 167}, {69, 167}, {70, 167}, {71, 167},
-    {72, 167}, {73, 100}, {74, 50}, {75, 33}, {76, 25}, {77, 20},
-    {78, 17}, {79, 14}, {80, 12}, {81, 11}, {82, 10}, {83, 9},
-    {84, 8}, {85, 7}, {86, 6}, {87, 5}, {88, 4}, {89, 2}, {90, 1}
-};
+Dictionary<int, int> pityRates = baseData.pityRates;
 
 var dataManager = new UserDataManager();
 Random random = new Random();
@@ -129,21 +82,7 @@ string banner = fiveStarCharacters[random.Next(fiveStarCharacters.Length)];
 
 UserDataLogger.Init();
 
-string[] statuses = new string[]
-{
-    "Genshin pulling for Cresclent",
-    "I am a Sheepy Boi! I am a Sheepy Boi! I am a Sheepy Sheepy Sheepy Sheepy Boi!",
-    "oooh mysterious!",
-    "HI!",
-    "MINECRAFT",
-    "Genshin Impact",
-    "Honkai: Star Rail",
-    "I dunno. Ask Cresclent!",
-    "Watching youtube!",
-    "Streaming!",
-    "Screaming!",
-    ""
-};
+string[] statuses = baseData.statuses;
 
 string gameStatus = statuses[random.Next(0, statuses.Length)] + " https://discord.com/invite/JZC8rgUHMf";
 
@@ -268,6 +207,10 @@ app.AddSlashCommand("pity", "Check your current pity count and stats", (Applicat
 
     UserDataLogger.Logger(context, "pity");
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Pity"))
+        return "❌ The `/pity` command is disabled on this server!";
+
     return $"**Your Stats:**\n" +
            $"Pity: **{data.Pity}/90**\n" +
            $"4-Star Pity: **{data.FourStarPity}/10**\n" +
@@ -287,7 +230,7 @@ app.AddSlashCommand("startupguide", "A simple guide on what you could do", async
         return "This command can only be used in a server!";
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.StartupGuide))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "StartupGuide"))
         return "❌ The `/startupguide` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -346,7 +289,7 @@ app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandCont
     UserDataLogger.Logger(context, "inventory");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Inventory))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Inventory"))
         return "❌ The `/inventory` command is disabled on this server!";
 
     if (data.Inventory.Count == 0)
@@ -412,7 +355,7 @@ app.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandCon
     UserDataLogger.Logger(context, "banner");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Banner))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Banner"))
         return "❌ The `/banner` command is disabled on this server!";
 
     var voteService = app.Services.GetRequiredService<VoteService>();
@@ -428,7 +371,7 @@ app.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCont
     UserDataLogger.Logger(context, "help");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Help))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Help"))
         return "❌ The `/help` command is disabled on this server!";
 
     var helpMessage = $"# 🐑 **Sheepy Bot Help Menu**\n\n" +
@@ -519,7 +462,7 @@ app.AddSlashCommand("coinflip", "Simple Coinflip Command", (ApplicationCommandCo
     UserDataLogger.Logger(context, "coinflip");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Coinflip))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Coinflip"))
         return "❌ The `/coinflip` command is disabled on this server!";
 
     string coinout = random.Next(0, 2) == 0 ? "Heads" : "Tails";
@@ -533,7 +476,7 @@ app.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by crescl
     UserDataLogger.Logger(context, "bannerreset");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.BannerReset))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "BannerReset"))
         return "❌ The `/bannerreset` command is disabled on this server!";
 
     if (userId == 1157243448093573120)
@@ -558,7 +501,7 @@ app.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (Ap
     UserDataLogger.Logger(context, "pull");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Pull))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Pull"))
         return "❌ The `/pull` command is disabled on this server!";
 
     if (cooldowns.TryGetValue(userId, out var cooldownEnd))
@@ -679,7 +622,7 @@ app.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (Ap
     UserDataLogger.Logger(context, "votebanner");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteBanner))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "VoteBanner"))
         return "❌ The `/votebanner` command is disabled on this server!";
 
     var result = await voteService.StartRerollVote(context.Interaction as SlashCommandInteraction);
@@ -691,7 +634,7 @@ app.AddSlashCommand("votehistory", "View recent banner vote history", async (App
     UserDataLogger.Logger(context, "votehistory");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteHistory))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "VoteHistory"))
         return "❌ The `/votehistory` command is disabled on this server!";
 
     var voteService = app.Services.GetRequiredService<VoteService>();
@@ -728,7 +671,7 @@ app.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin o
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetVoteChannel))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "SetVoteChannel"))
         return "❌ The `/setvotechannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -802,7 +745,7 @@ app.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild (
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableVoteChannel))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "DisableVoteChannel"))
         return "❌ The `/disablevotechannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -836,7 +779,7 @@ app.AddSlashCommand("votechannelstatus", "Check the status of vote channel for t
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteChannelStatus))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "VoteChannelStatus"))
         return "❌ The `/votechannelstatus` command is disabled on this server!";
 
     var voteService = app.Services.GetRequiredService<VoteService>();
@@ -858,7 +801,7 @@ app.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announ
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetStartupChannel))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "SetStartupChannel"))
         return "❌ The `/setstartupchannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -913,7 +856,7 @@ app.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announ
     }
 
     var restClient = app.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
+    var startupAnnouncement = new StartupAnnouncement(restClient, startpinger);
     startupAnnouncement.SetAnnouncementChannel(guildId, targetChannelId, targetRoleId);
 
     return $"Startup announcements have been set to <#{targetChannelId}> for this server!";
@@ -932,7 +875,7 @@ app.AddSlashCommand("disablestartup", "Disable bot startup announcements for thi
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableStartup))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "DisableStartup"))
         return "❌ The `/disablestartup` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -948,7 +891,7 @@ app.AddSlashCommand("disablestartup", "Disable bot startup announcements for thi
     }
 
     var restClient = app.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
+    var startupAnnouncement = new StartupAnnouncement(restClient, startpinger);
     startupAnnouncement.DisableAnnouncements(guildId);
     return "Startup announcements have been disabled for this server.";
 });
@@ -966,7 +909,7 @@ app.AddSlashCommand("startupstatus", "Check the status of startup announcements 
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.StartupStatus))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "StartupStatus"))
         return "❌ The `/startupstatus` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -982,7 +925,7 @@ app.AddSlashCommand("startupstatus", "Check the status of startup announcements 
     }
 
     var restClient = app.Services.GetRequiredService<RestClient>();
-    var startupAnnouncement = new StartupAnnouncement(restClient);
+    var startupAnnouncement = new StartupAnnouncement(restClient, startpinger);
     var info = startupAnnouncement.GetConfigInfo(guildId);
     var guildName = context.Guild.Name;
 
@@ -1006,7 +949,7 @@ app.AddSlashCommand("setglobalchannel", "Set the channel for global announcement
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetGlobalChannel))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "SetGlobalChannel"))
         return "❌ The `/setglobalchannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -1087,7 +1030,7 @@ app.AddSlashCommand("disableglobal", "Disable global announcements for this guil
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableGlobal))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "DisableGlobal"))
         return "❌ The `/disableglobal` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -1122,7 +1065,7 @@ app.AddSlashCommand("globalstatus", "Check the status of global announcements fo
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GlobalStatus))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "GlobalStatus"))
         return "❌ The `/globalstatus` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
@@ -1156,7 +1099,7 @@ app.AddSlashCommand("globalannounce", "Send a global announcement to all configu
     UserDataLogger.Logger(context, "globalannounce");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GlobalAnnounce))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "GlobalAnnounce"))
         return "❌ The `/globalannounce` command is disabled on this server!";
 
     if (userId != 1157243448093573120)
@@ -1372,7 +1315,7 @@ app.AddSlashCommand("guildleaderboard", "Show top command users in this guild (T
     UserDataLogger.Logger(context, "guildleaderboard");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GuildLeaderboard))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "GuildLeaderboard"))
         return "❌ The `/guildleaderboard` command is disabled on this server!";
 
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
@@ -1471,7 +1414,7 @@ app.AddSlashCommand("totalleaderboard", "Show top command users across ALL guild
     UserDataLogger.Logger(context, "totalleaderboard");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.TotalLeaderboard))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "TotalLeaderboard"))
         return "❌ The `/totalleaderboard` command is disabled on this server!";
 
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
@@ -1644,7 +1587,7 @@ app.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin on
     UserDataLogger.Logger(context, "guilddata");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GuildData))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "GuildData"))
         return "❌ The `/guilddata` command is disabled on this server!";
 
     var startDate = new DateTime(2026, 6, 20);
@@ -1814,7 +1757,7 @@ app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific chan
     }
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.AllData))
+    if (!serverData.IsCommandEnabled(context.Guild.Id, "AllData"))
         return "❌ The `/alldata` command is disabled on this server!";
 
     var startDate = new DateTime(2026, 6, 20);
@@ -2043,7 +1986,7 @@ app.AddSlashCommand("github", "The open source code!", (ApplicationCommandContex
     UserDataLogger.Logger(context, "github");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Github))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Github"))
         return "❌ The `/github` command is disabled on this server!";
 
     return "github: [github](https://github.com/cresclent/SheepyBot)";
@@ -2054,7 +1997,7 @@ app.AddSlashCommand("terms", "the terms of service", (ApplicationCommandContext 
     UserDataLogger.Logger(context, "terms");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Terms))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Terms"))
         return "❌ The `/terms` command is disabled on this server!";
 
     return new TAPCommands().TOS();
@@ -2065,7 +2008,7 @@ app.AddSlashCommand("privacy", "the privacy policy", (ApplicationCommandContext 
     UserDataLogger.Logger(context, "privacy");
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Privacy))
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, "Privacy"))
         return "❌ The `/privacy` command is disabled on this server!";
 
     return new TAPCommands().Privacy();
@@ -2096,22 +2039,19 @@ app.AddSlashCommand("disablecommands", "Disable specific commands on this server
         return "❌ Please specify commands to disable! Example: `/disablecommands pull,coinflip,help`";
 
     var commandList = commands.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                              .Select(c => c.Trim().ToLower())
+                              .Select(c => c.Trim())
                               .ToList();
 
+    var config = serverData.GetOrCreateConfig(guildId);
     var disabled = new List<string>();
     var notFound = new List<string>();
-    var cmdEnums = new List<serverBlockModel.BotCommand>();
 
     foreach (var cmdName in commandList)
     {
-        if (Enum.TryParse<serverBlockModel.BotCommand>(cmdName, true, out var cmd))
+        string cmdKey = cmdName;
+        if (config.BinaryDictionary.ContainsKey(cmdKey))
         {
-            if (cmd != serverBlockModel.BotCommand.None)
-            {
-                cmdEnums.Add(cmd);
-                disabled.Add(cmdName);
-            }
+            disabled.Add(cmdKey);
         }
         else
         {
@@ -2119,13 +2059,13 @@ app.AddSlashCommand("disablecommands", "Disable specific commands on this server
         }
     }
 
-    if (cmdEnums.Count > 0)
+    if (disabled.Count > 0)
     {
-        serverData.DisableCommands(guildId, cmdEnums);
+        serverData.DisableCommands(guildId, disabled);
     }
 
     string response = "✅ **Commands disabled:**\n";
-    response += string.Join("\n", disabled.Select(c => $"• /{c}"));
+    response += string.Join("\n", disabled.Select(c => $"• /{c.ToLower()}"));
 
     if (notFound.Count > 0)
         response += $"\n\n⚠️ **Unknown commands:** {string.Join(", ", notFound)}";
@@ -2161,22 +2101,19 @@ app.AddSlashCommand("enablecommands", "Enable specific commands on this server (
         return "❌ Please specify commands to enable! Example: `/enablecommands pull,coinflip`";
 
     var commandList = commands.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                              .Select(c => c.Trim().ToLower())
+                              .Select(c => c.Trim())
                               .ToList();
 
+    var config = serverData.GetOrCreateConfig(guildId);
     var enabled = new List<string>();
     var notFound = new List<string>();
-    var cmdEnums = new List<serverBlockModel.BotCommand>();
 
     foreach (var cmdName in commandList)
     {
-        if (Enum.TryParse<serverBlockModel.BotCommand>(cmdName, true, out var cmd))
+        string cmdKey = cmdName;
+        if (config.BinaryDictionary.ContainsKey(cmdKey))
         {
-            if (cmd != serverBlockModel.BotCommand.None)
-            {
-                cmdEnums.Add(cmd);
-                enabled.Add(cmdName);
-            }
+            enabled.Add(cmdKey);
         }
         else
         {
@@ -2184,13 +2121,13 @@ app.AddSlashCommand("enablecommands", "Enable specific commands on this server (
         }
     }
 
-    if (cmdEnums.Count > 0)
+    if (enabled.Count > 0)
     {
-        serverData.EnableCommands(guildId, cmdEnums);
+        serverData.EnableCommands(guildId, enabled);
     }
 
     string response = "✅ **Commands enabled:**\n";
-    response += string.Join("\n", enabled.Select(c => $"• /{c}"));
+    response += string.Join("\n", enabled.Select(c => $"• /{c.ToLower()}"));
 
     if (notFound.Count > 0)
         response += $"\n\n⚠️ **Unknown commands:** {string.Join(", ", notFound)}";
@@ -2212,8 +2149,6 @@ app.AddSlashCommand("enabledcommands", "List all enabled commands on this server
         return "❌ This command can only be used in a server!";
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
-        return "❌ Command management is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -2229,7 +2164,7 @@ app.AddSlashCommand("enabledcommands", "List all enabled commands on this server
         return "❌ No commands are currently enabled on this server!";
 
     string response = "✅ **Enabled Commands:**\n";
-    response += string.Join("\n", enabled.Select(c => $"• /{c.ToString().ToLower()}"));
+    response += string.Join("\n", enabled.Select(c => $"• /{c.ToLower()}"));
     response += $"\n\n**Total:** {enabled.Count} commands enabled";
 
     return response;
@@ -2246,8 +2181,6 @@ app.AddSlashCommand("disabledcommands", "List all disabled commands on this serv
         return "❌ This command can only be used in a server!";
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
-        return "❌ Command management is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -2263,7 +2196,7 @@ app.AddSlashCommand("disabledcommands", "List all disabled commands on this serv
         return "✅ No commands are currently disabled on this server!";
 
     string response = "🚫 **Disabled Commands:**\n";
-    response += string.Join("\n", disabled.Select(c => $"• /{c.ToString().ToLower()}"));
+    response += string.Join("\n", disabled.Select(c => $"• /{c.ToLower()}"));
     response += $"\n\n**Total:** {disabled.Count} commands disabled";
 
     return response;
@@ -2280,8 +2213,6 @@ app.AddSlashCommand("resetcommands", "Reset all commands to enabled (Admin only)
         return "❌ This command can only be used in a server!";
 
     var serverData = app.Services.GetRequiredService<serverDataManager>();
-    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
-        return "❌ Command management is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -2496,7 +2427,7 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
         }
         new Write().WriteLine($"Commands: {commandsstring.TrimEnd(',', ' ')}");
 
-        var startupAnnouncement = new StartupAnnouncement(restClientForEvents);
+        var startupAnnouncement = new StartupAnnouncement(restClientForEvents, startpinger);
         await startupAnnouncement.SendStartupAnnouncementAsync();
     }
     catch (Exception ex)

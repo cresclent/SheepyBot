@@ -52,6 +52,17 @@ This Discord bot code is view-only. Hosting or running this bot is strictly proh
                         <p style="font-size: 14px; color: #94a3b8;">Reset the banner to a random 5-star character.</p>
                         <button type="submit" class="warning">🔄 Reset Banner</button>
                     </form>
+                    <form method="post">
+                        <input type="hidden" name="action" value="SetBanner" />
+                        <p style="font-size: 14px; color: #94a3b8">Type character name to set the banner</p>
+                        <div class="form-group" style="display: flex; flex-direction: row; gap: 8px">
+                            <div style="display:flex; flex-direction:column">
+                            <label for="characterSet">Character Name:</label>
+                            <input type="text" id="characterSet" name="char" placeholder="Enter character name" required />
+                            </div>
+                            <button type="submit" class="warning">Set Banner</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 

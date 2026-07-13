@@ -56,7 +56,6 @@ namespace discord_bot.serverDataModels
             var newConfig = new serverBlockModel
             {
                 GuildID = guildId,
-                commandHash = ulong.MaxValue,
                 botVers = "1.0.0"
             };
             newConfig.BuildBinaryDictionaryFromEnum();
@@ -73,64 +72,58 @@ namespace discord_bot.serverDataModels
             _cache[config.GuildID] = config;
         }
 
-        public bool IsCommandEnabled(ulong guildId, serverBlockModel.BotCommand command)
+        public bool IsCommandEnabled(ulong guildId, string commandName)
         {
             var config = GetOrCreateConfig(guildId);
-            return ((ulong)command & config.commandHash) != 0;
+            return config.IsCommandEnabled(commandName);
         }
 
-        public void EnableCommands(ulong guildId, List<serverBlockModel.BotCommand> commands)
+        public void EnableCommands(ulong guildId, List<string> commands)
         {
             var config = GetOrCreateConfig(guildId);
             foreach (var cmd in commands)
             {
-                config.commandHash |= (ulong)cmd;
+                config.SetCommandEnabled(cmd, true);
             }
             SaveConfig(config);
         }
 
-        public void DisableCommands(ulong guildId, List<serverBlockModel.BotCommand> commands)
+        public void DisableCommands(ulong guildId, List<string> commands)
         {
             var config = GetOrCreateConfig(guildId);
             foreach (var cmd in commands)
             {
-                config.commandHash &= ~(ulong)cmd;
+                config.SetCommandEnabled(cmd, false);
             }
             SaveConfig(config);
         }
 
-        public List<serverBlockModel.BotCommand> GetEnabledCommands(ulong guildId)
+        public List<string> GetEnabledCommands(ulong guildId)
         {
             var config = GetOrCreateConfig(guildId);
-            var enabled = new List<serverBlockModel.BotCommand>();
-            foreach (serverBlockModel.BotCommand cmd in Enum.GetValues(typeof(serverBlockModel.BotCommand)))
-            {
-                if (cmd != serverBlockModel.BotCommand.None && ((ulong)cmd & config.commandHash) != 0)
-                {
-                    enabled.Add(cmd);
-                }
-            }
-            return enabled;
+            return config.BinaryDictionary
+                .Where(kvp => kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToList();
         }
 
-        public List<serverBlockModel.BotCommand> GetDisabledCommands(ulong guildId)
+        public List<string> GetDisabledCommands(ulong guildId)
         {
             var config = GetOrCreateConfig(guildId);
-            var disabled = new List<serverBlockModel.BotCommand>();
-            foreach (serverBlockModel.BotCommand cmd in Enum.GetValues(typeof(serverBlockModel.BotCommand)))
-            {
-                if (cmd != serverBlockModel.BotCommand.None && ((ulong)cmd & config.commandHash) == 0)
-                {
-                    disabled.Add(cmd);
-                }
-            }
-            return disabled;
+            return config.BinaryDictionary
+                .Where(kvp => !kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToList();
         }
 
         public void ResetAllCommands(ulong guildId)
         {
             var config = GetOrCreateConfig(guildId);
-            config.commandHash = ulong.MaxValue;
+            var keys = config.BinaryDictionary.Keys.ToList();
+            foreach (var key in keys)
+            {
+                config.BinaryDictionary[key] = true;
+            }
             SaveConfig(config);
         }
 
@@ -163,7 +156,7 @@ namespace discord_bot.serverDataModels
                     var config = System.Text.Json.JsonSerializer.Deserialize<serverBlockModel>(json);
                     if (config != null)
                     {
-                        allConfigs[config.commandHash] = config;
+                        allConfigs[config.GuildID] = config;
                     }
                 }
                 catch { }

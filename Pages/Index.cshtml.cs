@@ -71,9 +71,28 @@ namespace discord_bot.Pages
                     return await HandleCleanupServers();
                 case "Reload":
                     return await HandleReload();
+                case "SetBanner":
+                    return await HandleSetbanner();
                 default:
                     return Page();
             }
+        }
+
+        private async Task<IActionResult> HandleSetbanner()
+        {
+            var Character = Request.Form["char"].ToString();
+            if (Character != null)
+            {
+                string setbanner = _voteService.SetBanner(Character);
+                Message = setbanner;
+                IsSuccess = !setbanner.ToLower().Contains("failed");
+            }
+            else
+            {
+                Message = "character is empty for some reason!";
+                IsSuccess = false;
+            }
+            return Page();
         }
 
         private async Task<IActionResult> HandleReload()

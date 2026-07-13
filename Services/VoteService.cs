@@ -1,11 +1,13 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
+using discord_bot.SmallDat;
 using discord_bot.Tools;
 using NetCord;
 using NetCord.Gateway;
 using NetCord.Rest;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Linq;
 
 namespace discord_bot.Services
 {
@@ -197,6 +199,30 @@ namespace discord_bot.Services
                 } while (newBanner == _currentBanner && _fiveStarCharacters.Length > 1);
                 _currentBanner = newBanner;
             }
+        }
+
+        public string SetBanner(string character)
+        {
+            string Message = "";
+            if (baseData.fiveStarCharacters.Any(Character => Character.Equals(character, StringComparison.OrdinalIgnoreCase)))
+            {
+                string? matchedCharacter = baseData.fiveStarCharacters.FirstOrDefault(Character => Character.Equals(character, StringComparison.OrdinalIgnoreCase));
+
+                if (matchedCharacter != null)
+                {
+                    _currentBanner = matchedCharacter;
+                    Message = $"Success: set banner to {_currentBanner}!";
+                }
+                else
+                {
+                    Message = "Failed: matchedCharacter was null!";
+                }
+            }
+            else
+            {
+                Message = $"Failed! character {character} doesn't exist!";
+            }
+            return Message;
         }
 
         public async Task<string> StartRerollVote(SlashCommandInteraction interaction)

@@ -12,11 +12,13 @@ public class StartupAnnouncement
     private readonly RestClient _restClient;
     private readonly string _configPath;
     private GlobalConfig _config;
+    private readonly bool _testing;
 
-    public StartupAnnouncement(RestClient restClient)
+    public StartupAnnouncement(RestClient restClient, bool testing)
     {
         _restClient = restClient;
         _configPath = Path.Combine(AppContext.BaseDirectory, "startup_config.json");
+        _testing = testing;
         LoadConfig();
     }
 
@@ -124,7 +126,7 @@ public class StartupAnnouncement
                 }
 
                 var finalMessage = message;
-                if (channelConfig.PingRoleId.HasValue)
+                if (channelConfig.PingRoleId.HasValue && !_testing)
                 {
                     finalMessage += $"\n🔔 **Ping:** <@&{channelConfig.PingRoleId}>";
                 }
