@@ -133,6 +133,37 @@ This Discord bot code is view-only. Hosting or running this bot is strictly proh
                     <a href="/Suggestions" class="info" style="display: inline-block; padding: 10px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">💡 View Suggestions</a>
                 </div>
             </div>
+
+            <div class="col">
+                <div class="card card-no-margin">
+                    <h4 style="display: flex; text-align: center; gap: 10px;">
+                        <svg class="humbleicons hi-refresh"
+                             xmlns="http://www.w3.org/2000/svg"
+                             width="24" height="24" fill="none"
+                             viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"
+                                  d="M20 20v-5h-5M4 4v5h5m10.938 2A8.001 8.001 0 0 0 5.07 8m-1.008 5a8.001 8.001 0 0 0 14.868 3" />
+                        </svg>
+                        Force Reload Files
+                    </h4>
+                    <p style="font-size: 14px; color: #94a3b8;">Quickly reload all the stuff in memory to actual file stuff</p>
+                    <form method="post">
+                        <input type="hidden" name="action" value="Reload" />
+                        <button type="submit" class="success" style="display: flex; text-align: center; gap: 10px;">
+                            <svg class="humbleicons hi-refresh"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 width="24" height="24" fill="none"
+                                 viewBox="0 0 24 24">
+                                <path stroke="currentColor" stroke-linecap="round"
+                                      stroke-linejoin="round" stroke-width="2"
+                                      d="M20 20v-5h-5M4 4v5h5m10.938 2A8.001 8.001 0 0 0 5.07 8m-1.008 5a8.001 8.001 0 0 0 14.868 3" />
+                            </svg>
+                            Reload
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <div class="row mt-20">
@@ -148,45 +179,29 @@ This Discord bot code is view-only. Hosting or running this bot is strictly proh
 
     <div class="card">
         <h3>📋 Available Slash Commands</h3>
+        <p class="text-muted">Click a command to see its description</p>
         <div class="command-grid">
-            <div class="command-item">/pity</div>
-            <div class="command-item">/inventory</div>
-            <div class="command-item">/banner</div>
-            <div class="command-item">/pull</div>
-            <div class="command-item">/help</div>
-            <div class="command-item">/coinflip</div>
-            <div class="command-item">/bannerreset</div>
-            <div class="command-item">/votebanner</div>
-            <div class="command-item">/votehistory</div>
-            <div class="command-item">/setvotechannel</div>
-            <div class="command-item">/disablevotechannel</div>
-            <div class="command-item">/votechannelstatus</div>
-            <div class="command-item">/allvotechannels</div>
-            <div class="command-item">/suggest</div>
-            <div class="command-item">/approvesuggestion</div>
-            <div class="command-item">/denysuggestion</div>
-            <div class="command-item">/viewsuggestion</div>
-            <div class="command-item">/listsuggestions</div>
-            <div class="command-item">/guildleaderboard</div>
-            <div class="command-item">/totalleaderboard</div>
-            <div class="command-item">/guilddata</div>
-            <div class="command-item">/alldata</div>
-            <div class="command-item">/setstartupchannel</div>
-            <div class="command-item">/disablestartup</div>
-            <div class="command-item">/startupstatus</div>
-            <div class="command-item">/allstartupchannels</div>
-            <div class="command-item">/setglobalchannel</div>
-            <div class="command-item">/globalannounce</div>
-            <div class="command-item">/disableglobal</div>
-            <div class="command-item">/globalstatus</div>
-            <div class="command-item">/allglobalchannels</div>
-            <div class="command-item">/ignoreuser</div>
-            <div class="command-item">/unignoreuser</div>
-            <div class="command-item">/listignored</div>
-            <div class="command-item">/cleanupremovedservers</div>
-            <div class="command-item">/github</div>
-            <div class="command-item">/terms</div>
-            <div class="command-item">/privacy</div>
+            @if (Model.CommandsList != null && Model.CommandsList.Any())
+            {
+                @foreach (var command in Model.CommandsList)
+                {
+                    <div class="command-item" onclick="toggleCommand(this)">
+                        <div class="command-header">
+                            <span class="command-name">@command.Name</span>
+                            <span class="command-toggle">▼</span>
+                        </div>
+                        <div class="command-description">
+                            @command.Contexts
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 20px;">
+                    No commands loaded yet. Bot may still be starting up.
+                </p>
+            }
         </div>
     </div>
 
@@ -197,5 +212,14 @@ This Discord bot code is view-only. Hosting or running this bot is strictly proh
             <li><strong>Server Count:</strong> @Model.serverCount</li>
         </ul>
     </div>
+
+    <script>
+            function toggleCommand(element) {
+                document.querySelectorAll('.command-item.expanded').forEach(el => {
+                    if (el !== element) el.classList.remove('expanded');
+                });
+                element.classList.toggle('expanded');
+            }
+    </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 #VS
 .vs
 *.slnx
+*.sln
 
 #data-files
 bin

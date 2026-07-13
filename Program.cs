@@ -235,6 +235,8 @@ builder.Services.AddSingleton<VoteService>(provider =>
     return new VoteService(gatewayClient, rest, fiveStarCharacters, banner);
 });
 
+builder.Services.AddSingleton<ConfigReloadService>();
+
 var app = builder.Build();
 
 app.UseStaticFiles();
@@ -243,6 +245,19 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
+
+var reloadService = app.Services.GetRequiredService<ConfigReloadService>();
+
+var globalAnnouncement = app.Services.GetRequiredService<GlobalAnnouncement>();
+reloadService.RegisterReloadAction("GlobalAnnouncement", globalAnnouncement.ReloadConfig);
+
+var startupAnnouncement = app.Services.GetRequiredService<StartupAnnouncement>();
+reloadService.RegisterReloadAction("StartupAnnouncement", startupAnnouncement.ReloadConfig);
+
+var voteService = app.Services.GetRequiredService<VoteService>();
+reloadService.RegisterReloadAction("VoteService", voteService.ReloadConfig);
+
+new Write().WriteLine($"ConfigReloadService: Registered {reloadService.ActionCount} reload actions");
 
 app.AddSlashCommand("pity", "Check your current pity count and stats", (ApplicationCommandContext context) =>
 {
@@ -1460,18 +1475,18 @@ app.AddSlashCommand("totalleaderboard", "Show top command users across ALL guild
     response.AppendLine($"");
     response.AppendLine($"## 🏠 **Top Guilds**");
 
-    rank = 1;
+    int rankGuild = 1;
     foreach (var guild in guildStats.Take(10))
     {
-        string medal = rank switch
+        string medal = rankGuild switch
         {
             1 => "🥇",
             2 => "🥈",
             3 => "🥉",
-            _ => $"#{rank}"
+            _ => $"#{rankGuild}"
         };
         response.AppendLine($"{medal} **{guild.GuildName}** - {guild.TotalCommands} commands");
-        rank++;
+        rankGuild++;
     }
 
     if (guildStats.Count > 10)
@@ -2095,6 +2110,8 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("terms", "the terms of service"),
             new SlashCommandProperties("privacy", "the privacy policy")
         };
+
+        CommandList.setCommands(commands);
 
         await restClientForEvents.BulkOverwriteGlobalApplicationCommandsAsync(applicationId, commands);
         new Write().WriteLine($"{commands.Count} commands registered!");

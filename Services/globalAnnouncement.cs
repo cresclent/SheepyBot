@@ -4,7 +4,6 @@ using NetCord;
 using NetCord.Rest;
 using System.Text.Json;
 using System.Collections.Generic;
-using discord_bot.Services;
 using discord_bot.Tools;
 
 namespace discord_bot.Services
@@ -14,12 +13,23 @@ namespace discord_bot.Services
         private readonly RestClient _restClient;
         private readonly string _configPath;
         private GlobalConfig _config;
+        private readonly object _configLock = new object();
 
         public GlobalAnnouncement(RestClient restClient)
         {
             _restClient = restClient;
             _configPath = Path.Combine(AppContext.BaseDirectory, "startup_config.json");
             LoadConfig();
+            new Write().WriteLine($"GlobalAnnouncement: Initialized with {_config.GlobalChannels.Count} global channels");
+        }
+
+        public void ReloadConfig()
+        {
+            lock (_configLock)
+            {
+                LoadConfig();
+                new Write().WriteLine($"GlobalAnnouncement: Config reloaded. Found {_config.GlobalChannels.Count} global channels.");
+            }
         }
 
         private void LoadConfig()
@@ -29,10 +39,20 @@ namespace discord_bot.Services
                 try
                 {
                     string json = File.ReadAllText(_configPath);
-                    _config = JsonSerializer.Deserialize<GlobalConfig>(json) ?? new GlobalConfig();
+                    var newConfig = JsonSerializer.Deserialize<GlobalConfig>(json);
+                    if (newConfig != null)
+                    {
+                        _config = newConfig;
+                    }
+                    else
+                    {
+                        new Write().WriteLine("GlobalAnnouncement: Deserialized config was null, using empty config");
+                        _config = new GlobalConfig();
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    new Write().WriteLine($"GlobalAnnouncement: Error loading config: {ex.Message}");
                     _config = new GlobalConfig();
                 }
             }
@@ -47,9 +67,12 @@ namespace discord_bot.Services
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(_config, options);
-                File.WriteAllText(_configPath, json);
+                lock (_configLock)
+                {
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    string json = JsonSerializer.Serialize(_config, options);
+                    File.WriteAllText(_configPath, json);
+                }
             }
             catch (Exception ex)
             {
@@ -59,42 +82,63 @@ namespace discord_bot.Services
 
         public void SetGlobalChannel(ulong guildId, ulong channelId, ulong? pingRoleId = null)
         {
-            if (_config.GlobalChannels.ContainsKey(guildId))
+            lock (_configLock)
             {
-                _config.GlobalChannels[guildId].ChannelId = channelId;
-                _config.GlobalChannels[guildId].PingRoleId = pingRoleId;
-            }
-            else
-            {
-                _config.GlobalChannels.Add(guildId, new GlobalChannelConfig
+                if (_config.GlobalChannels.ContainsKey(guildId))
                 {
-                    ChannelId = channelId,
-                    PingRoleId = pingRoleId
-                });
-            }
+                    _config.GlobalChannels[guildId].ChannelId = channelId;
+                    _config.GlobalChannels[guildId].PingRoleId = pingRoleId;
+                }
+                else
+                {
+                    _config.GlobalChannels.Add(guildId, new GlobalChannelConfig
+                    {
+                        ChannelId = channelId,
+                        PingRoleId = pingRoleId
+                    });
+                }
 
-            SaveConfig();
+                SaveConfig();
+                new Write().WriteLine($"GlobalAnnouncement: Updated global channel for guild {guildId} to channel {channelId}");
+            }
         }
 
         public void DisableGlobalAnnouncements(ulong guildId)
         {
-            if (_config.GlobalChannels.ContainsKey(guildId))
+            lock (_configLock)
             {
-                _config.GlobalChannels.Remove(guildId);
-                SaveConfig();
+                if (_config.GlobalChannels.ContainsKey(guildId))
+                {
+                    _config.GlobalChannels.Remove(guildId);
+                    SaveConfig();
+                    new Write().WriteLine($"GlobalAnnouncement: Disabled global announcements for guild {guildId}");
+                }
             }
         }
 
         public void DisableAllGlobalAnnouncements()
         {
-            _config.GlobalChannels.Clear();
-            SaveConfig();
+            lock (_configLock)
+            {
+                _config.GlobalChannels.Clear();
+                SaveConfig();
+                new Write().WriteLine($"GlobalAnnouncement: Disabled all global announcements");
+            }
         }
 
         public async Task SendGlobalAnnouncementAsync(string announcement, bool ping = false)
         {
-            if (_config.GlobalChannels.Count == 0)
+            Dictionary<ulong, GlobalChannelConfig> channelsSnapshot;
+            lock (_configLock)
+            {
+                channelsSnapshot = new Dictionary<ulong, GlobalChannelConfig>(_config.GlobalChannels);
+            }
+
+            if (channelsSnapshot.Count == 0)
+            {
+                new Write().WriteLine("GlobalAnnouncement: No global channels configured, skipping announcement");
                 return;
+            }
 
             if (string.IsNullOrWhiteSpace(announcement))
                 return;
@@ -106,7 +150,7 @@ namespace discord_bot.Services
 
             var guildsToRemove = new List<ulong>();
 
-            foreach (var kvp in _config.GlobalChannels)
+            foreach (var kvp in channelsSnapshot)
             {
                 var guildId = kvp.Key;
                 var channelConfig = kvp.Value;
@@ -116,7 +160,7 @@ namespace discord_bot.Services
                     var channel = await _restClient.GetChannelAsync(channelConfig.ChannelId) as TextGuildChannel;
                     if (channel == null)
                     {
-                        new Write().WriteLine($"Channel {channelConfig.ChannelId} not found for guild {guildId}, removing config");
+                        new Write().WriteLine($"Channel {channelConfig.ChannelId} not found for guild {guildId}, marking for removal");
                         guildsToRemove.Add(guildId);
                         continue;
                     }
@@ -128,6 +172,7 @@ namespace discord_bot.Services
                     }
 
                     await channel.SendMessageAsync(finalMessage);
+                    new Write().WriteLine($"GlobalAnnouncement: Sent to guild {guildId} (channel {channelConfig.ChannelId})");
                 }
                 catch (Exception ex)
                 {
@@ -135,59 +180,70 @@ namespace discord_bot.Services
 
                     if (ex.Message.Contains("403") || ex.Message.Contains("Forbidden") || ex.Message.Contains("Missing Access"))
                     {
-                        new Write().WriteLine($"Bot lacks access to guild {guildId} or channel {channelConfig.ChannelId}, removing config");
+                        new Write().WriteLine($"Bot lacks access to guild {guildId} or channel {channelConfig.ChannelId}, marking for removal");
                         guildsToRemove.Add(guildId);
                     }
                 }
             }
 
-            foreach (var guildId in guildsToRemove)
-            {
-                if (_config.GlobalChannels.ContainsKey(guildId))
-                {
-                    _config.GlobalChannels.Remove(guildId);
-                    new Write().WriteLine($"Removed guild {guildId} from global announcement config due to missing access");
-                }
-            }
-
             if (guildsToRemove.Count > 0)
             {
-                SaveConfig();
+                lock (_configLock)
+                {
+                    foreach (var guildId in guildsToRemove)
+                    {
+                        if (_config.GlobalChannels.ContainsKey(guildId))
+                        {
+                            _config.GlobalChannels.Remove(guildId);
+                            new Write().WriteLine($"Removed guild {guildId} from global announcement config due to missing access");
+                        }
+                    }
+                    SaveConfig();
+                }
             }
         }
 
         public string GetGlobalConfigInfo(ulong guildId)
         {
-            if (_config.GlobalChannels.TryGetValue(guildId, out var config))
+            lock (_configLock)
             {
-                return $"Global announcements are enabled\nChannel ID: {config.ChannelId}\nRole ID: {(config.PingRoleId.HasValue ? config.PingRoleId.ToString() : "None")}";
-            }
+                if (_config.GlobalChannels.TryGetValue(guildId, out var config))
+                {
+                    return $"Global announcements are enabled\nChannel ID: {config.ChannelId}\nRole ID: {(config.PingRoleId.HasValue ? config.PingRoleId.ToString() : "None")}";
+                }
 
-            return "Global announcements are disabled for this guild.";
+                return "Global announcements are disabled for this guild.";
+            }
         }
 
         public string GetAllGlobalConfigInfo()
         {
-            if (_config.GlobalChannels.Count == 0)
-                return "No global announcement channels configured.";
-
-            var result = "Configured Global Channels:\n\n";
-            foreach (var kvp in _config.GlobalChannels)
+            lock (_configLock)
             {
-                result += $"Guild ID: {kvp.Key} -> Channel ID: {kvp.Value.ChannelId} -> Role ID: {(kvp.Value.PingRoleId.HasValue ? kvp.Value.PingRoleId.ToString() : "None")}\n";
+                if (_config.GlobalChannels.Count == 0)
+                    return "No global announcement channels configured.";
+
+                var result = $"Configured Global Channels ({_config.GlobalChannels.Count}):\n\n";
+                foreach (var kvp in _config.GlobalChannels)
+                {
+                    result += $"Guild ID: {kvp.Key} -> Channel ID: {kvp.Value.ChannelId} -> Role ID: {(kvp.Value.PingRoleId.HasValue ? kvp.Value.PingRoleId.ToString() : "None")}\n";
+                }
+                return result;
             }
-            return result;
         }
 
         public async Task<bool> ClearGuildGlobalConfig(ulong guildId)
         {
-            if (_config.GlobalChannels.ContainsKey(guildId))
+            lock (_configLock)
             {
-                _config.GlobalChannels.Remove(guildId);
-                SaveConfig();
-                return true;
+                if (_config.GlobalChannels.ContainsKey(guildId))
+                {
+                    _config.GlobalChannels.Remove(guildId);
+                    SaveConfig();
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
     }
 

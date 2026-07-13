@@ -1,11 +1,11 @@
 ﻿// Copyright (c) 2026 Cresclent. All rights reserved.
 // This Discord bot code is view-only. Hosting or running this bot is strictly prohibited!
-
-using System.Collections.Concurrent;
-using System.Text.Json;
+using discord_bot.Tools;
 using NetCord;
 using NetCord.Gateway;
 using NetCord.Rest;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace discord_bot.Services
 {
@@ -33,6 +33,16 @@ namespace discord_bot.Services
             _currentBanner = initialBanner;
             SetupEventHandlers();
             LoadVoteChannels();
+        }
+
+        public void ReloadConfig()
+        {
+            lock (_configLock)
+            {
+                _voteChannels.Clear();
+                LoadVoteChannels();
+                new Write().WriteLine($"VoteService: Config reloaded. Found {_voteChannels.Count} vote channels.");
+            }
         }
 
         private void SetupEventHandlers()

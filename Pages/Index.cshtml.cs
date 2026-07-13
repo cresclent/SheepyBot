@@ -6,6 +6,10 @@ using discord_bot.SmallDat;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using NetCord.Gateway;
+using NetCord.Rest;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace discord_bot.Pages
 {
@@ -17,31 +21,35 @@ namespace discord_bot.Pages
         private readonly StartupAnnouncement _startupAnnouncement;
         private readonly GatewayClient _gatewayClient;
         private readonly ServerTracker _serverTracker;
+        private readonly ConfigReloadService _reloadService;
 
         public IndexModel(
             VoteService voteService,
             GlobalAnnouncement globalAnnouncement,
             StartupAnnouncement startupAnnouncement,
             GatewayClient gatewayClient,
-            ServerTracker serverTracker)
+            ServerTracker serverTracker,
+            ConfigReloadService reloadService)
         {
             _voteService = voteService;
             _globalAnnouncement = globalAnnouncement;
             _startupAnnouncement = startupAnnouncement;
             _gatewayClient = gatewayClient;
             _serverTracker = serverTracker;
+            _reloadService = reloadService;
         }
 
+        public List<ApplicationCommandProperties> CommandsList { get; set; } = new();
         public string Message { get; set; } = string.Empty;
         public bool IsSuccess { get; set; }
         public string CurrentBanner => _voteService?.GetCurrentBanner() ?? "Unknown";
         public string BotOwnerId => "1157243448093573120";
-
         public int serverCount { get; set; }
 
         public void OnGet()
         {
             getServerCount();
+            CommandsList = CommandList.Commands ?? new List<ApplicationCommandProperties>();
         }
 
         private void getServerCount()
@@ -61,9 +69,18 @@ namespace discord_bot.Pages
                     return await HandleGlobalAnnounce();
                 case "CleanupServers":
                     return await HandleCleanupServers();
+                case "Reload":
+                    return await HandleReload();
                 default:
                     return Page();
             }
+        }
+
+        private async Task<IActionResult> HandleReload()
+        {
+            _reloadService.ReloadAll();
+            await Task.Delay(15);
+            return Page();
         }
 
         private IActionResult HandleResetBanner()

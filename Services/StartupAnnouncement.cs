@@ -20,6 +20,12 @@ public class StartupAnnouncement
         LoadConfig();
     }
 
+    public void ReloadConfig()
+    {
+        LoadConfig();
+        new Write().WriteLine($"StartupAnnouncement: Config reloaded. Found {_config.Channels.Count} startup channels.");
+    }
+
     private void LoadConfig()
     {
         if (File.Exists(_configPath))
@@ -151,6 +157,7 @@ public class StartupAnnouncement
             SaveConfig();
         }
     }
+
     public string GetConfigInfo(ulong guildId)
     {
         if (_config.Channels.TryGetValue(guildId, out var config))
