@@ -5,6 +5,7 @@ using discord_bot.Services;
 using discord_bot.SmallDat;
 using discord_bot.Tools;
 using discord_bot.userdataModels;
+using discord_bot.serverDataModels;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,7 @@ builder.Services.AddSingleton<GlobalAnnouncement>(provider =>
 });
 
 builder.Services.AddScoped<ServerTracker>();
+builder.Services.AddSingleton<serverDataManager>();
 
 string[] fiveStarCharacters = new[]
 {
@@ -284,6 +286,10 @@ app.AddSlashCommand("startupguide", "A simple guide on what you could do", async
     if (context.Guild == null)
         return "This command can only be used in a server!";
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.StartupGuide))
+        return "❌ The `/startupguide` command is disabled on this server!";
+
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
         return "Could not find your user in this guild!";
@@ -338,6 +344,10 @@ app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandCont
     var data = dataManager.GetOrCreateUserData(userId);
 
     UserDataLogger.Logger(context, "inventory");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Inventory))
+        return "❌ The `/inventory` command is disabled on this server!";
 
     if (data.Inventory.Count == 0)
     {
@@ -400,6 +410,11 @@ app.AddSlashCommand("inventory", "Check your inventory", (ApplicationCommandCont
 app.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "banner");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Banner))
+        return "❌ The `/banner` command is disabled on this server!";
+
     var voteService = app.Services.GetRequiredService<VoteService>();
     var currentBanner = voteService.GetCurrentBanner();
 
@@ -411,6 +426,10 @@ app.AddSlashCommand("banner", "Shows the current banner", (ApplicationCommandCon
 app.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "help");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Help))
+        return "❌ The `/help` command is disabled on this server!";
 
     var helpMessage = $"# 🐑 **Sheepy Bot Help Menu**\n\n" +
            $"## 📋 **General Commands**\n" +
@@ -468,7 +487,15 @@ app.AddSlashCommand("help", "Shows the Help Menu", async (ApplicationCommandCont
            $"`/privacy` - The privacy policy\n" +
            $"`/terms` - The terms of service\n\n" +
            $"Ask Cresclent for more info (can be DMs, may take a while to answer)\n" +
-           $"If you want your data removed from this bot, send me a DM immediately. I will add you to an ignore list.";
+           $"If you want your data removed from this bot, send me a DM immediately. I will add you to an ignore list." +
+           $"\n\n## 🔧 **Server Command Management**\n" +
+           $"`/disablecommands <commands>` - Disable specific commands on this server (Admin only)\n" +
+           $"  • Example: `/disablecommands pull,coinflip,help`\n" +
+           $"`/enablecommands <commands>` - Enable specific commands on this server (Admin only)\n" +
+           $"  • Example: `/enablecommands pull,help`\n" +
+           $"`/enabledcommands` - List all enabled commands on this server\n" +
+           $"`/disabledcommands` - List all disabled commands on this server\n" +
+           $"`/resetcommands` - Reset all commands to enabled (Admin only)";
 
     var parts = MessageSplitterHelper.SplitMessage(helpMessage);
 
@@ -491,6 +518,10 @@ app.AddSlashCommand("coinflip", "Simple Coinflip Command", (ApplicationCommandCo
 {
     UserDataLogger.Logger(context, "coinflip");
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Coinflip))
+        return "❌ The `/coinflip` command is disabled on this server!";
+
     string coinout = random.Next(0, 2) == 0 ? "Heads" : "Tails";
     return $"# Your coin is: {coinout}";
 });
@@ -500,6 +531,10 @@ app.AddSlashCommand("bannerreset", "banner resetting, can ONLY be done by crescl
     var userId = context.User.Id;
 
     UserDataLogger.Logger(context, "bannerreset");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.BannerReset))
+        return "❌ The `/bannerreset` command is disabled on this server!";
 
     if (userId == 1157243448093573120)
     {
@@ -521,6 +556,10 @@ app.AddSlashCommand("pull", "Perform 10 wishes (2.5 minute cooldown)", async (Ap
     string currentBanner = voteService.GetCurrentBanner();
 
     UserDataLogger.Logger(context, "pull");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Pull))
+        return "❌ The `/pull` command is disabled on this server!";
 
     if (cooldowns.TryGetValue(userId, out var cooldownEnd))
     {
@@ -639,6 +678,10 @@ app.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (Ap
 
     UserDataLogger.Logger(context, "votebanner");
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteBanner))
+        return "❌ The `/votebanner` command is disabled on this server!";
+
     var result = await voteService.StartRerollVote(context.Interaction as SlashCommandInteraction);
     return result;
 });
@@ -646,6 +689,11 @@ app.AddSlashCommand("votebanner", "Start a vote to reroll the banner", async (Ap
 app.AddSlashCommand("votehistory", "View recent banner vote history", async (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "votehistory");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteHistory))
+        return "❌ The `/votehistory` command is disabled on this server!";
+
     var voteService = app.Services.GetRequiredService<VoteService>();
     var history = voteService.GetVoteHistory(10);
 
@@ -678,6 +726,10 @@ app.AddSlashCommand("setvotechannel", "Set the channel for banner votes (Admin o
     {
         return "This command can only be used in a server!";
     }
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetVoteChannel))
+        return "❌ The `/setvotechannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -749,6 +801,10 @@ app.AddSlashCommand("disablevotechannel", "Disable banner votes for this guild (
         return "This command can only be used in a server!";
     }
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableVoteChannel))
+        return "❌ The `/disablevotechannel` command is disabled on this server!";
+
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
@@ -779,6 +835,10 @@ app.AddSlashCommand("votechannelstatus", "Check the status of vote channel for t
         return "This command can only be used in a server!";
     }
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.VoteChannelStatus))
+        return "❌ The `/votechannelstatus` command is disabled on this server!";
+
     var voteService = app.Services.GetRequiredService<VoteService>();
     return voteService.GetVoteChannelStatus(guildId);
 });
@@ -796,6 +856,10 @@ app.AddSlashCommand("setstartupchannel", "Set the channel for bot startup announ
     {
         return "This command can only be used in a server!";
     }
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetStartupChannel))
+        return "❌ The `/setstartupchannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -867,6 +931,10 @@ app.AddSlashCommand("disablestartup", "Disable bot startup announcements for thi
         return "This command can only be used in a server!";
     }
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableStartup))
+        return "❌ The `/disablestartup` command is disabled on this server!";
+
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
@@ -896,6 +964,10 @@ app.AddSlashCommand("startupstatus", "Check the status of startup announcements 
     {
         return "This command can only be used in a server!";
     }
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.StartupStatus))
+        return "❌ The `/startupstatus` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -932,6 +1004,10 @@ app.AddSlashCommand("setglobalchannel", "Set the channel for global announcement
     {
         return "This command can only be used in a server!";
     }
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.SetGlobalChannel))
+        return "❌ The `/setglobalchannel` command is disabled on this server!";
 
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
@@ -1010,6 +1086,10 @@ app.AddSlashCommand("disableglobal", "Disable global announcements for this guil
         return "This command can only be used in a server!";
     }
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.DisableGlobal))
+        return "❌ The `/disableglobal` command is disabled on this server!";
+
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
@@ -1041,6 +1121,10 @@ app.AddSlashCommand("globalstatus", "Check the status of global announcements fo
         return "This command can only be used in a server!";
     }
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GlobalStatus))
+        return "❌ The `/globalstatus` command is disabled on this server!";
+
     var guildUser = await context.Guild.GetUserAsync(userId);
     if (guildUser == null)
     {
@@ -1070,6 +1154,10 @@ app.AddSlashCommand("globalannounce", "Send a global announcement to all configu
     var userId = context.User.Id;
 
     UserDataLogger.Logger(context, "globalannounce");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GlobalAnnounce))
+        return "❌ The `/globalannounce` command is disabled on this server!";
 
     if (userId != 1157243448093573120)
     {
@@ -1283,6 +1371,10 @@ app.AddSlashCommand("guildleaderboard", "Show top command users in this guild (T
 
     UserDataLogger.Logger(context, "guildleaderboard");
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GuildLeaderboard))
+        return "❌ The `/guildleaderboard` command is disabled on this server!";
+
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
     var endDate = DateTime.Now.Date;
     var allLogs = new List<UserDataLogger>();
@@ -1377,6 +1469,10 @@ app.AddSlashCommand("guildleaderboard", "Show top command users in this guild (T
 app.AddSlashCommand("totalleaderboard", "Show top command users across ALL guilds (This Month)", async (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "totalleaderboard");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.TotalLeaderboard))
+        return "❌ The `/totalleaderboard` command is disabled on this server!";
 
     var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
     var endDate = DateTime.Now.Date;
@@ -1547,6 +1643,10 @@ app.AddSlashCommand("guilddata", "Show all command logs for this guild (Admin on
 
     UserDataLogger.Logger(context, "guilddata");
 
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.GuildData))
+        return "❌ The `/guilddata` command is disabled on this server!";
+
     var startDate = new DateTime(2026, 6, 20);
     var endDate = DateTime.Now.Date;
     var allLogs = new List<UserDataLogger>();
@@ -1712,6 +1812,11 @@ app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific chan
     {
         return "❌ You need **Administrator** permissions or be the bot owner to use this command!";
     }
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.AllData))
+        return "❌ The `/alldata` command is disabled on this server!";
+
     var startDate = new DateTime(2026, 6, 20);
     var endDate = DateTime.Now.Date;
     var allLogs = new List<UserDataLogger>();
@@ -1936,19 +2041,259 @@ app.AddSlashCommand("alldata", "Show ALL command data (Admin only, specific chan
 app.AddSlashCommand("github", "The open source code!", (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "github");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Github))
+        return "❌ The `/github` command is disabled on this server!";
+
     return "github: [github](https://github.com/cresclent/SheepyBot)";
 });
 
 app.AddSlashCommand("terms", "the terms of service", (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "terms");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Terms))
+        return "❌ The `/terms` command is disabled on this server!";
+
     return new TAPCommands().TOS();
 });
 
 app.AddSlashCommand("privacy", "the privacy policy", (ApplicationCommandContext context) =>
 {
     UserDataLogger.Logger(context, "privacy");
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (context.Guild != null && !serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.Privacy))
+        return "❌ The `/privacy` command is disabled on this server!";
+
     return new TAPCommands().Privacy();
+});
+
+app.AddSlashCommand("disablecommands", "Disable specific commands on this server (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "commands", Description = "Commands to disable (separate with commas)")] string commands) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "disablecommands");
+
+    if (context.Guild == null)
+        return "❌ This command can only be used in a server!";
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "❌ Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "❌ You need **Administrator** permissions to use this command!";
+
+    if (string.IsNullOrWhiteSpace(commands))
+        return "❌ Please specify commands to disable! Example: `/disablecommands pull,coinflip,help`";
+
+    var commandList = commands.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                              .Select(c => c.Trim().ToLower())
+                              .ToList();
+
+    var disabled = new List<string>();
+    var notFound = new List<string>();
+    var cmdEnums = new List<serverBlockModel.BotCommand>();
+
+    foreach (var cmdName in commandList)
+    {
+        if (Enum.TryParse<serverBlockModel.BotCommand>(cmdName, true, out var cmd))
+        {
+            if (cmd != serverBlockModel.BotCommand.None)
+            {
+                cmdEnums.Add(cmd);
+                disabled.Add(cmdName);
+            }
+        }
+        else
+        {
+            notFound.Add(cmdName);
+        }
+    }
+
+    if (cmdEnums.Count > 0)
+    {
+        serverData.DisableCommands(guildId, cmdEnums);
+    }
+
+    string response = "✅ **Commands disabled:**\n";
+    response += string.Join("\n", disabled.Select(c => $"• /{c}"));
+
+    if (notFound.Count > 0)
+        response += $"\n\n⚠️ **Unknown commands:** {string.Join(", ", notFound)}";
+
+    if (disabled.Count == 0 && notFound.Count > 0)
+        response = $"❌ No valid commands found! Unknown: {string.Join(", ", notFound)}";
+
+    return response;
+});
+
+app.AddSlashCommand("enablecommands", "Enable specific commands on this server (Admin only)", async (ApplicationCommandContext context,
+    [SlashCommandParameter(Name = "commands", Description = "Commands to enable (separate with commas)")] string commands) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "enablecommands");
+
+    if (context.Guild == null)
+        return "❌ This command can only be used in a server!";
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "❌ Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "❌ You need **Administrator** permissions to use this command!";
+
+    if (string.IsNullOrWhiteSpace(commands))
+        return "❌ Please specify commands to enable! Example: `/enablecommands pull,coinflip`";
+
+    var commandList = commands.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                              .Select(c => c.Trim().ToLower())
+                              .ToList();
+
+    var enabled = new List<string>();
+    var notFound = new List<string>();
+    var cmdEnums = new List<serverBlockModel.BotCommand>();
+
+    foreach (var cmdName in commandList)
+    {
+        if (Enum.TryParse<serverBlockModel.BotCommand>(cmdName, true, out var cmd))
+        {
+            if (cmd != serverBlockModel.BotCommand.None)
+            {
+                cmdEnums.Add(cmd);
+                enabled.Add(cmdName);
+            }
+        }
+        else
+        {
+            notFound.Add(cmdName);
+        }
+    }
+
+    if (cmdEnums.Count > 0)
+    {
+        serverData.EnableCommands(guildId, cmdEnums);
+    }
+
+    string response = "✅ **Commands enabled:**\n";
+    response += string.Join("\n", enabled.Select(c => $"• /{c}"));
+
+    if (notFound.Count > 0)
+        response += $"\n\n⚠️ **Unknown commands:** {string.Join(", ", notFound)}";
+
+    if (enabled.Count == 0 && notFound.Count > 0)
+        response = $"❌ No valid commands found! Unknown: {string.Join(", ", notFound)}";
+
+    return response;
+});
+
+app.AddSlashCommand("enabledcommands", "List all enabled commands on this server", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "enabledcommands");
+
+    if (context.Guild == null)
+        return "❌ This command can only be used in a server!";
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
+        return "❌ Command management is disabled on this server!";
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "❌ Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "❌ You need **Administrator** permissions to use this command!";
+
+    var enabled = serverData.GetEnabledCommands(guildId);
+
+    if (enabled.Count == 0)
+        return "❌ No commands are currently enabled on this server!";
+
+    string response = "✅ **Enabled Commands:**\n";
+    response += string.Join("\n", enabled.Select(c => $"• /{c.ToString().ToLower()}"));
+    response += $"\n\n**Total:** {enabled.Count} commands enabled";
+
+    return response;
+});
+
+app.AddSlashCommand("disabledcommands", "List all disabled commands on this server", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "disabledcommands");
+
+    if (context.Guild == null)
+        return "❌ This command can only be used in a server!";
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
+        return "❌ Command management is disabled on this server!";
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "❌ Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "❌ You need **Administrator** permissions to use this command!";
+
+    var disabled = serverData.GetDisabledCommands(guildId);
+
+    if (disabled.Count == 0)
+        return "✅ No commands are currently disabled on this server!";
+
+    string response = "🚫 **Disabled Commands:**\n";
+    response += string.Join("\n", disabled.Select(c => $"• /{c.ToString().ToLower()}"));
+    response += $"\n\n**Total:** {disabled.Count} commands disabled";
+
+    return response;
+});
+
+app.AddSlashCommand("resetcommands", "Reset all commands to enabled (Admin only)", async (ApplicationCommandContext context) =>
+{
+    var userId = context.User.Id;
+    var guildId = context.Guild?.Id ?? 0;
+
+    UserDataLogger.Logger(context, "resetcommands");
+
+    if (context.Guild == null)
+        return "❌ This command can only be used in a server!";
+
+    var serverData = app.Services.GetRequiredService<serverDataManager>();
+    if (!serverData.IsCommandEnabled(context.Guild.Id, serverBlockModel.BotCommand.None))
+        return "❌ Command management is disabled on this server!";
+
+    var guildUser = await context.Guild.GetUserAsync(userId);
+    if (guildUser == null)
+        return "❌ Could not find your user in this guild!";
+
+    var permissions = guildUser.GetPermissions(context.Guild);
+    if ((permissions & Permissions.Administrator) != Permissions.Administrator)
+        return "❌ You need **Administrator** permissions to use this command!";
+
+    serverData.ResetAllCommands(guildId);
+
+    return "✅ All commands have been reset! All commands are now enabled.";
 });
 
 void AddToInventory(UserWishData data, string item)
@@ -1982,6 +2327,9 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
 
     try
     {
+        var serverDataManager = app.Services.GetRequiredService<serverDataManager>();
+        serverDataManager.SyncAllConfigs();
+
         await gatewayClient.UpdatePresenceAsync(new PresenceProperties(UserStatusType.Online)
         {
             Activities = new[] { new UserActivityProperties(gameStatus, UserActivityType.Playing) }
@@ -2108,7 +2456,30 @@ gatewayClient.Ready += async (ReadyEventArgs args) =>
             new SlashCommandProperties("listsuggestions", "List all bot suggestions"),
             new SlashCommandProperties("github", "The open source code!"),
             new SlashCommandProperties("terms", "the terms of service"),
-            new SlashCommandProperties("privacy", "the privacy policy")
+            new SlashCommandProperties("privacy", "the privacy policy"),
+            new SlashCommandProperties("disablecommands", "Disable specific commands on this server (Admin only)")
+            {
+                Options = new[]
+                {
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "commands", "Commands to disable (separate with commas)")
+                    {
+                        Required = true
+                    }
+                }
+            },
+            new SlashCommandProperties("enablecommands", "Enable specific commands on this server (Admin only)")
+            {
+                Options = new[]
+                {
+                    new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "commands", "Commands to enable (separate with commas)")
+                    {
+                        Required = true
+                    }
+                }
+            },
+            new SlashCommandProperties("enabledcommands", "List all enabled commands on this server"),
+            new SlashCommandProperties("disabledcommands", "List all disabled commands on this server"),
+            new SlashCommandProperties("resetcommands", "Reset all commands to enabled (Admin only)")
         };
 
         CommandList.setCommands(commands);
